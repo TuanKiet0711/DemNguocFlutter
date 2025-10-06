@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "9241997255",
+    "project_id": "dem-nguoc-su-kien",
+    "storage_bucket": "dem-nguoc-su-kien.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:9241997255:android:a6854ea6bcf9459cb3b3e2",
+        "android_client_info": {
+          "package_name": "com.example.dem_nguoc_su_kien"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDp8HqhMdSwBlfJol30tQ77TIOP6BnaloM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
