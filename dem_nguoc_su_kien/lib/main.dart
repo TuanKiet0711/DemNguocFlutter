@@ -13,6 +13,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart'; // <-- Tạo màn hình đăng nhập/đăng ký
 
 final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -27,8 +28,7 @@ Future<void> _initNotifications() async {
   const initSettings = InitializationSettings(android: androidSettings);
   await flutterLocalNotificationsPlugin.initialize(initSettings);
 
-  // Timezone: KHÔNG dùng flutter_timezone. Đặt thẳng theo nhu cầu.
-  // Nếu bạn ở VN:
+  // Timezone VN
   tz.initializeTimeZones();
   tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
 }
@@ -41,11 +41,14 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await FirebaseAuth.instance.signInAnonymously();
+
+  // ❌ Không auto sign-in ẩn danh ở đây nữa.
+  // Nếu muốn cho dùng thử ẩn danh, làm nút "Dùng thử" ở LoginScreen và gọi:
+  // FirebaseAuth.instance.signInAnonymously();
 
   await _initNotifications();
 
-  // Android 13+: xin quyền thông báo (đúng API)
+  // Android 13+ xin quyền thông báo
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>()
@@ -72,7 +75,28 @@ class DemNguocApp extends StatelessWidget {
         Locale('vi'),
         Locale('en'),
       ],
-      home: const HomeScreen(),
+      home: const AuthGate(),
+    );
+  }
+}
+
+/// Cổng xác thực: điều hướng giữa LoginScreen và HomeScreen
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final user = snap.data;
+        return user == null ? const LoginScreen() : const HomeScreen();
+      },
     );
   }
 }
