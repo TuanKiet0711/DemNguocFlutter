@@ -47,6 +47,7 @@ dependencies:
   image_cropper: ^11.0.0
   permission_handler: ^11.3.0
   device_info_plus: ^11.1.0
+  flutter_facebook_auth: ^7.0.1
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +71,10 @@ flutter:
     - assets/avatars/a2.png
     - assets/avatars/a3.png
     - assets/avatars/a4.png
+    - assets/avatars/a5.png
+    - assets/avatars/a6.png
+    - assets/avatars/a7.png
+    - assets/avatars/a8.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

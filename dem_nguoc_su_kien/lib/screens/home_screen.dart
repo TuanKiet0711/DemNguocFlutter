@@ -22,7 +22,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _svc = DuLieuSuKien();
   String? _avatarPath;
-  final _prefsKey = 'avatar_path';
+
+  String get _prefsKey {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    return 'avatar_path_$uid'; // mỗi user 1 key riêng
+  }
+
   final _avatarImages = List.generate(8, (i) => 'assets/avatars/a${i + 1}.png');
 
   @override
@@ -46,26 +51,22 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() => _avatarPath = path);
   }
 
-  /// 📸 Chọn avatar & crop
+  // --- CHỌN ẢNH TỪ THƯ VIỆN ---
   Future<void> _pickAvatarFromGallery() async {
     bool granted = false;
-
     if (Platform.isAndroid) {
       final info = await DeviceInfoPlugin().androidInfo;
       final sdk = info.version.sdkInt;
       if (sdk >= 33) {
         final status = await Permission.photos.request();
-        if (status.isGranted) granted = true;
-        if (status.isPermanentlyDenied) await openAppSettings();
+        granted = status.isGranted;
       } else {
         final status = await Permission.storage.request();
-        if (status.isGranted) granted = true;
-        if (status.isPermanentlyDenied) await openAppSettings();
+        granted = status.isGranted;
       }
     } else if (Platform.isIOS) {
       final status = await Permission.photos.request();
-      if (status.isGranted || status.isLimited) granted = true;
-      if (status.isPermanentlyDenied) await openAppSettings();
+      granted = status.isGranted || status.isLimited;
     }
 
     if (!granted) {
@@ -96,13 +97,48 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
 
-    if (cropped != null) {
-      await _saveAvatarChoice('file:${cropped.path}');
-    }
+    if (cropped != null) await _saveAvatarChoice('file:${cropped.path}');
   }
 
-  Future<void> _resetAvatar() async => _saveAvatarChoice(null);
+  // --- CHỤP ẢNH ---
+  Future<void> _pickAvatarFromCamera() async {
+    final cam = await Permission.camera.request();
+    if (!cam.isGranted) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cần quyền Camera để chụp ảnh.')),
+        );
+      }
+      return;
+    }
 
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 90,
+      preferredCameraDevice: CameraDevice.front,
+    );
+    if (picked == null) return;
+
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      compressQuality: 90,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Cắt ảnh',
+          toolbarColor: Colors.teal,
+          toolbarWidgetColor: Colors.white,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(title: 'Cắt ảnh', aspectRatioLockEnabled: true),
+      ],
+    );
+
+    if (cropped != null) await _saveAvatarChoice('file:${cropped.path}');
+  }
+
+  // --- CHỌN AVATAR CÓ SẴN ---
   Future<void> _chonAvatarAssets(BuildContext context) async {
     await showDialog(
       context: context,
@@ -135,63 +171,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 3,
                     ),
                   ),
-                  child: ClipOval(
-                    child: Image.asset(path, fit: BoxFit.cover),
-                  ),
+                  child: ClipOval(child: Image.asset(path, fit: BoxFit.cover)),
                 ),
               );
             },
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng')),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))],
       ),
     );
   }
 
-  DateTime _mocDemNguoc(SuKien e) {
-    if (!e.lapHangNam) return e.thoiDiem;
-    final now = DateTime.now();
-    var t = DateTime(now.year, e.thoiDiem.month, e.thoiDiem.day, e.thoiDiem.hour, e.thoiDiem.minute);
-    if (t.isBefore(now)) {
-      t = DateTime(now.year + 1, t.month, t.day, t.hour, t.minute);
-    }
-    return t;
-  }
-
-  Future<bool> _confirmDelete(BuildContext context, SuKien e) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Xóa sự kiện?'),
-            content: Text('Bạn có chắc muốn xóa “${e.tieuDe}”?'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                child: const Text('Xóa'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
+  // --- HIỂN THỊ AVATAR (ưu tiên ảnh app lưu cục bộ) ---
   Widget _avatarWidget(User user) {
-    if ((user.photoURL ?? '').isNotEmpty) {
-      return CircleAvatar(radius: 20, backgroundImage: NetworkImage(user.photoURL!));
-    }
     if (_avatarPath != null && _avatarPath!.isNotEmpty) {
       if (_avatarPath!.startsWith('file:')) {
         final f = File(_avatarPath!.substring(5));
-        if (f.existsSync()) {
-          return CircleAvatar(radius: 20, backgroundImage: FileImage(f));
-        }
+        if (f.existsSync()) return CircleAvatar(radius: 20, backgroundImage: FileImage(f));
       } else if (_avatarPath!.startsWith('asset:')) {
         return CircleAvatar(radius: 20, backgroundImage: AssetImage(_avatarPath!.substring(6)));
       }
+    }
+    if ((user.photoURL ?? '').isNotEmpty) {
+      return CircleAvatar(radius: 20, backgroundImage: NetworkImage(user.photoURL!));
     }
     return const CircleAvatar(
       radius: 20,
@@ -200,6 +202,69 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- MENU AVATAR ---
+  Widget _avatarMenu(User user) {
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 10),
+      position: PopupMenuPosition.under,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 8,
+      onSelected: (v) async {
+        if (!mounted) return;
+        switch (v) {
+          case 'camera':
+            await _pickAvatarFromCamera();
+            break;
+          case 'pick':
+            await _pickAvatarFromGallery();
+            break;
+          case 'assets':
+            await _chonAvatarAssets(context);
+            break;
+          case 'logout':
+            await FirebaseAuth.instance.signOut();
+            if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+            break;
+        }
+      },
+      itemBuilder: (_) {
+        return [
+          PopupMenuItem(
+            enabled: false,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundImage: _avatarPath != null && _avatarPath!.startsWith('file:')
+                      ? FileImage(File(_avatarPath!.substring(5)))
+                      : _avatarPath != null && _avatarPath!.startsWith('asset:')
+                          ? AssetImage(_avatarPath!.substring(6)) as ImageProvider
+                          : (user.photoURL != null && user.photoURL!.isNotEmpty)
+                              ? NetworkImage(user.photoURL!)
+                              : const AssetImage('assets/avatars/a1.png'),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  user.email ?? 'Không có email',
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+                const Divider(height: 18, thickness: .8),
+              ],
+            ),
+          ),
+          const PopupMenuItem(value: 'camera', child: Text('📸 Chụp ảnh')),
+          const PopupMenuItem(value: 'pick', child: Text('🖼️ Chọn từ thư viện')),
+          const PopupMenuItem(value: 'assets', child: Text('✨ Chọn avatar có sẵn')),
+          const PopupMenuItem(value: 'logout', child: Text('🚪 Đăng xuất')),
+        ];
+      },
+      child: _avatarWidget(user),
+    );
+  }
+
+  // --- UI ---
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -215,91 +280,35 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F7F7),
       appBar: AppBar(
-        elevation: 0,
         centerTitle: true,
-        // Làm nền AppBar đẹp hơn với gradient + bo đáy
+        title: const Text(
+          'Danh sách sự kiện',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF009688), Color(0xFF20B2AA)], // teal đậm → teal nhạt
+              colors: [Color(0xFF009688), Color(0xFF20B2AA)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-          ),
-        ),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
-        ),
-        title: const Text(
-          'Danh sách sự kiện',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
           ),
         ),
         foregroundColor: Colors.white,
-        backgroundColor: Colors.teal, // fallback màu
+        backgroundColor: Colors.transparent,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: PopupMenuButton<String>(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              onSelected: (v) async {
-                switch (v) {
-                  case 'pick':
-                    await _pickAvatarFromGallery();
-                    break;
-                  case 'assets':
-                    await _chonAvatarAssets(context);
-                    break;
-                  case 'reset':
-                    await _resetAvatar();
-                    break;
-                  case 'logout':
-                    await FirebaseAuth.instance.signOut();
-                    break;
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem<String>(
-                  value: 'pick',
-                  child: Row(
-                    children: [Icon(Icons.photo_library, color: Colors.teal), SizedBox(width: 10), Text('Chọn từ thư viện')],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'assets',
-                  child: Row(
-                    children: [Icon(Icons.brush, color: Colors.teal), SizedBox(width: 10), Text('Chọn avatar có sẵn')],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'reset',
-                  child: Row(
-                    children: [Icon(Icons.refresh, color: Colors.grey), SizedBox(width: 10), Text('Về mặc định')],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'logout',
-                  child: Row(
-                    children: [Icon(Icons.logout, color: Colors.redAccent), SizedBox(width: 10), Text('Đăng xuất')],
-                  ),
-                ),
-              ],
-              child: _avatarWidget(user),
-            ),
-          ),
+          Padding(padding: const EdgeInsets.only(right: 8), child: _avatarMenu(user)),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF009688),
+        backgroundColor: const Color(0xFF00A693),
+        icon: const Icon(Icons.add, color: Colors.white, size: 26),
+        label: const Text('Thêm sự kiện',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         onPressed: () async {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const ThemSuKienScreen()));
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Thêm sự kiện'),
       ),
       body: StreamBuilder<List<SuKien>>(
         stream: _svc.suKienCua(uid),
@@ -307,133 +316,97 @@ class _HomeScreenState extends State<HomeScreen> {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snap.hasError) {
-            return Center(child: Text('Lỗi: ${snap.error}'));
-          }
-
+          if (snap.hasError) return Center(child: Text('Lỗi: ${snap.error}'));
           final data = snap.data ?? [];
           if (data.isEmpty) {
             return const Center(
-              child: Text(
-                'Chưa có sự kiện nào.\nNhấn + để thêm mới.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
-              ),
+              child: Text('Chưa có sự kiện nào.\nNhấn + để thêm mới.',
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(12, 16, 12, 80),
-            itemCount: data.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 14),
-            itemBuilder: (_, i) {
-              final e = data[i];
-              final color = Color(e.mau);
-              final moc = _mocDemNguoc(e);
-              final time = DateFormat('HH:mm dd/MM/yyyy').format(e.thoiDiem);
+          final now = DateTime.now();
+          final daDenHen = data.where((e) => e.thoiDiem.isBefore(now)).toList()
+            ..sort((a, b) => b.thoiDiem.compareTo(a.thoiDiem));
+          final sapToi = data.where((e) => e.thoiDiem.isAfter(now)).toList()
+            ..sort((a, b) => a.thoiDiem.compareTo(b.thoiDiem));
+          final all = [...daDenHen, ...sapToi];
 
-              return Dismissible(
-                key: ValueKey(e.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  color: Colors.redAccent,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: const Icon(Icons.delete, color: Colors.white),
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 96),
+            itemCount: all.length,
+            itemBuilder: (_, i) {
+              final e = all[i];
+              final color = Color(e.mau);
+              final moc = e.thoiDiem;
+              final time = DateFormat('HH:mm dd/MM/yyyy').format(e.thoiDiem);
+              final isPast = moc.isBefore(now);
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(color: color.withOpacity(.2), blurRadius: 10, offset: const Offset(0, 5)),
+                  ],
+                  border: Border.all(color: color.withOpacity(.15)),
                 ),
-                confirmDismiss: (_) => _confirmDelete(context, e),
-                onDismissed: (_) => _svc.xoa(e.id),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color.withOpacity(.25), color.withOpacity(.08)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(color: color.withOpacity(.15), shape: BoxShape.circle),
+                          child: Icon(Icons.event, color: color, size: 28),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(e.tieuDe,
+                                  style: const TextStyle(
+                                      fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black)),
+                              const SizedBox(height: 4),
+                              Text('🕒 $time', style: const TextStyle(fontSize: 14, color: Colors.black87)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                    if (e.ghiChu?.isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text('📝 ${e.ghiChu}',
+                            style: const TextStyle(fontSize: 13.5, color: Colors.black54, height: 1.3)),
                       ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.event, color: color, size: 28),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: color.withOpacity(.25)),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              e.tieuDe,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                                letterSpacing: .2,
+                      child: Center(
+                        child: isPast
+                            ? const Text('ĐÃ ĐẾN HẸN',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal, fontSize: 16))
+                            : CountdownText(
+                                target: moc,
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold, color: color.darken()),
+                                doneText: 'ĐÃ ĐẾN HẸN',
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '🕒 $time',
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            if (e.ghiChu?.isNotEmpty == true)
-                              Text(
-                                '📝 ${e.ghiChu}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                          ],
-                        ),
                       ),
-                      const SizedBox(width: 10),
-                      // Khối đếm ngược nổi bật
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(.9),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: color.withOpacity(.3)),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Còn lại',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: color.darken(),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            // Widget này tự cập nhật, nên để riêng
-                            CountdownText(target: moc),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -444,10 +417,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Nhỏ mà có võ: mở rộng Color cho tiện chỉnh sắc độ
 extension _ColorX on Color {
   Color darken([double amount = .2]) {
-    assert(amount >= 0 && amount <= 1);
     final hsl = HSLColor.fromColor(this);
     final h = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
     return h.toColor();

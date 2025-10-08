@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 class CountdownText extends StatefulWidget {
-  final DateTime target;           // mốc đếm đến (đã xử lý lặp nếu cần)
-  final TextStyle? style;          // style tuỳ chọn
-  final String doneText;           // text khi đã đến
+  final DateTime target; // mốc đếm đến
+  final TextStyle? style;
+  final String doneText;
 
   const CountdownText({
     super.key,
@@ -24,7 +24,7 @@ class _CountdownTextState extends State<CountdownText> {
   @override
   void initState() {
     super.initState();
-    _tick();                                   // tính lần đầu
+    _tick();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
@@ -36,7 +36,7 @@ class _CountdownTextState extends State<CountdownText> {
   @override
   void didUpdateWidget(covariant CountdownText oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.target != widget.target) _tick(); // đổi target thì cập nhật ngay
+    if (oldWidget.target != widget.target) _tick();
   }
 
   @override
@@ -48,18 +48,27 @@ class _CountdownTextState extends State<CountdownText> {
   @override
   Widget build(BuildContext context) {
     if (_diff.isNegative) {
-      return Text(widget.doneText,
-          style: (widget.style ?? const TextStyle(fontWeight: FontWeight.bold)));
+      return Text(
+        widget.doneText,
+        style: widget.style ??
+            const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+      );
     }
+
     final d = _diff.inDays;
     final h = _diff.inHours % 24;
     final m = _diff.inMinutes % 60;
     final s = _diff.inSeconds % 60;
 
+    // 🔥 hiển thị kiểu tiếng Việt
     return Text(
-      '${d}d ${h}h ${m}m ${s}s',
+      'Còn lại ${d} ngày ${h} giờ ${m} phút ${s} giây',
       style: widget.style ??
-          const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'monospace'),
+          const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontFamily: 'monospace',
+            color: Colors.teal,
+          ),
     );
   }
 }
