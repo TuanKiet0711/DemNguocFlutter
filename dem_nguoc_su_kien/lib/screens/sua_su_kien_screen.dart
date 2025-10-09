@@ -1,29 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../../main.dart';
 import '../su_kien.dart';
 import '../services/du_lieu_su_kien.dart';
 
-class ThemSuKienScreen extends StatefulWidget {
-  const ThemSuKienScreen({super.key});
+class SuaSuKienScreen extends StatefulWidget {
+  final SuKien suKien;
+  const SuaSuKienScreen({super.key, required this.suKien});
+
   @override
-  State<ThemSuKienScreen> createState() => _ThemSuKienScreenState();
+  State<SuaSuKienScreen> createState() => _SuaSuKienScreenState();
 }
 
-class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
+class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
   final _frm = GlobalKey<FormState>();
   final _svc = DuLieuSuKien();
-  final _tieuDe = TextEditingController();
-  final _ghiChu = TextEditingController();
+
+  late TextEditingController _tieuDe;
+  late TextEditingController _ghiChu;
 
   DateTime? _thoiDiem;
   DateTime? _nhacLuc;
   bool _lapHangNam = false;
   int _mau = 0xFF4CAF50;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.suKien;
+    _tieuDe = TextEditingController(text: e.tieuDe);
+    _ghiChu = TextEditingController(text: e.ghiChu ?? '');
+    _thoiDiem = e.thoiDiem;
+    _nhacLuc = e.nhacLuc;
+    _lapHangNam = e.lapHangNam;
+    _mau = e.mau;
+  }
 
   String _fmt(DateTime d) => DateFormat('HH:mm dd/MM/yyyy').format(d);
 
@@ -88,7 +104,7 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
     );
   }
 
-  Future<void> _luu() async {
+  Future<void> _capNhat() async {
     if (!_frm.currentState!.validate()) return;
     if (_thoiDiem == null) {
       ScaffoldMessenger.of(context)
@@ -98,29 +114,30 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    final e = SuKien(
-      id: 'auto',
-      tieuDe: _tieuDe.text.trim(),
-      thoiDiem: _thoiDiem!,
-      nhacLuc: _nhacLuc,
-      lapHangNam: _lapHangNam,
-      mau: _mau,
-      ghiChu: _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
-      nguoiTao: uid,
-    );
+    final data = {
+      'tieuDe': _tieuDe.text.trim(),
+      'thoiDiem': Timestamp.fromDate(_thoiDiem!),
+      'nhacLuc': _nhacLuc == null ? null : Timestamp.fromDate(_nhacLuc!),
+      'lapHangNam': _lapHangNam,
+      'mau': _mau,
+      'ghiChu': _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
+      'nguoiTao': uid,
+    };
 
-    await _svc.them(e);
+    await FirebaseFirestore.instance.collection('su_kien').doc(widget.suKien.id).update(data);
 
+    // Schedule lại thông báo nếu có nhắc lúc
     if (_nhacLuc != null && _nhacLuc!.isAfter(DateTime.now())) {
-      final baseId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final baseId = widget.suKien.id.hashCode & 0x7FFFFFFF;
 
       await _scheduleLocalNotification(
         id: baseId,
-        title: 'Sắp đến: ${e.tieuDe}',
-        body: e.ghiChu,
+        title: 'Sắp đến: ${_tieuDe.text.trim()}',
+        body: _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
         at: _nhacLuc!,
       );
 
+      // Nếu lặp năm: đặt thêm năm sau
       if (_lapHangNam) {
         final nextYear = DateTime(
           _nhacLuc!.year + 1,
@@ -131,8 +148,8 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
         );
         await _scheduleLocalNotification(
           id: baseId + 1,
-          title: 'Sắp đến: ${e.tieuDe} (năm sau)',
-          body: e.ghiChu,
+          title: 'Sắp đến: ${_tieuDe.text.trim()} (năm sau)',
+          body: _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
           at: nextYear,
         );
       }
@@ -140,9 +157,8 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
 
     if (!mounted) return;
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Đã lưu sự kiện')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('✅ Đã cập nhật sự kiện')));
   }
 
   @override
@@ -159,15 +175,12 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
       appBar: AppBar(
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
-        title: const Text(
-          'Thêm sự kiện',
-          style: TextStyle(
-            color: Colors.white, // 👈 màu trắng
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Sửa sự kiện',style: TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.bold,
+  ),),
+        
         centerTitle: true,
-        elevation: 3,
       ),
       body: Form(
         key: _frm,
@@ -178,13 +191,10 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
               controller: _tieuDe,
               decoration: InputDecoration(
                 labelText: 'Tiêu đề sự kiện',
-                hintText: 'Nhập sự kiện của bạn',
                 prefixIcon: const Icon(Icons.title, color: Colors.teal),
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Nhập tiêu đề' : null,
@@ -221,28 +231,17 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
               value: _lapHangNam,
               onChanged: (v) => setState(() => _lapHangNam = v),
               activeColor: Colors.teal,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               tileColor: Colors.white,
             ),
             const SizedBox(height: 10),
 
-            const Text(
-              'Chọn màu thẻ',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
+            const Text('Chọn màu thẻ', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 10,
               children: [
-                for (final c in [
-                  0xFF4CAF50,
-                  0xFFF44336,
-                  0xFF2196F3,
-                  0xFFFFC107,
-                  0xFF9C27B0
-                ])
+                for (final c in [0xFF4CAF50, 0xFFF44336, 0xFF2196F3, 0xFFFFC107, 0xFF9C27B0])
                   GestureDetector(
                     onTap: () => setState(() => _mau = c),
                     child: AnimatedContainer(
@@ -253,16 +252,12 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                         color: Color(c),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color:
-                              _mau == c ? Colors.black : Colors.transparent,
+                          color: _mau == c ? Colors.black : Colors.transparent,
                           width: 2.5,
                         ),
                         boxShadow: [
                           if (_mau == c)
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 6,
-                            ),
+                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6),
                         ],
                       ),
                     ),
@@ -279,9 +274,7 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                 prefixIcon: const Icon(Icons.notes, color: Colors.teal),
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
             const SizedBox(height: 24),
@@ -289,19 +282,17 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _luu,
+                onPressed: _capNhat,
                 icon: const Icon(Icons.save),
                 label: const Text(
-                  'Lưu sự kiện',
+                  'Lưu thay đổi',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 3,
                 ),
               ),
