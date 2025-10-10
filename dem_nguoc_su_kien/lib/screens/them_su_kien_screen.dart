@@ -5,6 +5,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../main.dart';
+import '../../i18n/app_localizations.dart';
+import '../../language_controller.dart';
 import '../su_kien.dart';
 import '../services/du_lieu_su_kien.dart';
 
@@ -22,43 +24,54 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
 
   DateTime? _thoiDiem;
   DateTime? _nhacLuc;
-  bool _lapHangNam = false;
   int _mau = 0xFF4CAF50;
 
-  String _fmt(DateTime d) => DateFormat('HH:mm dd/MM/yyyy').format(d);
+  String _fmt(DateTime d) =>
+      DateFormat('HH:mm dd/MM/yyyy', LanguageController.I.locale.languageCode).format(d);
 
-  Future<DateTime?> _pickDateTime(DateTime? init) async {
+  Future<DateTime?> _pickDateTime(DateTime? init, AppLoc loc) async {
     final now = DateTime.now();
     final d = await showDatePicker(
       context: context,
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 10),
       initialDate: init ?? now,
-      helpText: 'Chọn ngày',
-      cancelText: 'Hủy',
-      confirmText: 'Xong',
+      helpText: loc.pickDate,
+      cancelText: loc.cancel,
+      confirmText: loc.done,
+      locale: LanguageController.I.locale,
       builder: (context, child) {
-        return Theme(
-          data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.teal)),
-          child: child!,
+        return Localizations.override(
+          context: context,
+          locale: LanguageController.I.locale,
+          child: Theme(
+            data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.teal)),
+            child: child!,
+          ),
         );
       },
     );
     if (d == null) return null;
+
     final t = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(init ?? now),
-      helpText: 'Chọn giờ',
-      cancelText: 'Hủy',
-      confirmText: 'Xong',
+      helpText: loc.pickTime,
+      cancelText: loc.cancel,
+      confirmText: loc.done,
       builder: (context, child) {
-        return Theme(
-          data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.teal)),
-          child: child!,
+        return Localizations.override(
+          context: context,
+          locale: LanguageController.I.locale,
+          child: Theme(
+            data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.teal)),
+            child: child!,
+          ),
         );
       },
     );
     if (t == null) return null;
+
     return DateTime(d.year, d.month, d.day, t.hour, t.minute);
   }
 
@@ -75,24 +88,27 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
       tz.TZDateTime.from(at, tz.local),
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'su_kien',
-          'Sự kiện',
-          importance: Importance.max,
+          'su_kien_ding',
+          'Sự kiện (có âm)',
+          channelDescription: 'Kênh thông báo sự kiện kèm âm thanh ding',
+          importance: Importance.high,
           priority: Priority.high,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound('ding'),
+          enableVibration: true,
+          icon: '@mipmap/ic_launcher',
         ),
       ),
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.dateAndTime,
     );
   }
 
-  Future<void> _luu() async {
+  Future<void> _luu(AppLoc loc) async {
     if (!_frm.currentState!.validate()) return;
     if (_thoiDiem == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Chọn thời điểm')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.pleasePickTime)));
       return;
     }
 
@@ -103,7 +119,6 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
       tieuDe: _tieuDe.text.trim(),
       thoiDiem: _thoiDiem!,
       nhacLuc: _nhacLuc,
-      lapHangNam: _lapHangNam,
       mau: _mau,
       ghiChu: _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
       nguoiTao: uid,
@@ -113,36 +128,17 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
 
     if (_nhacLuc != null && _nhacLuc!.isAfter(DateTime.now())) {
       final baseId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
       await _scheduleLocalNotification(
         id: baseId,
-        title: 'Sắp đến: ${e.tieuDe}',
+        title: '${loc.soon}${e.tieuDe}',
         body: e.ghiChu,
         at: _nhacLuc!,
       );
-
-      if (_lapHangNam) {
-        final nextYear = DateTime(
-          _nhacLuc!.year + 1,
-          _nhacLuc!.month,
-          _nhacLuc!.day,
-          _nhacLuc!.hour,
-          _nhacLuc!.minute,
-        );
-        await _scheduleLocalNotification(
-          id: baseId + 1,
-          title: 'Sắp đến: ${e.tieuDe} (năm sau)',
-          body: e.ghiChu,
-          at: nextYear,
-        );
-      }
     }
 
     if (!mounted) return;
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Đã lưu sự kiện')),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.saveEvent)));
   }
 
   @override
@@ -154,20 +150,17 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLoc.of(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
       appBar: AppBar(
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
-        title: const Text(
-          'Thêm sự kiện',
-          style: TextStyle(
-            color: Colors.white, // 👈 màu trắng
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text(loc.addEvent, style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 3,
+        
       ),
       body: Form(
         key: _frm,
@@ -177,72 +170,48 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
             TextFormField(
               controller: _tieuDe,
               decoration: InputDecoration(
-                labelText: 'Tiêu đề sự kiện',
-                hintText: 'Nhập sự kiện của bạn',
+                labelText: loc.eventTitle,
+                hintText: loc.eventHint,
                 prefixIcon: const Icon(Icons.title, color: Colors.teal),
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Nhập tiêu đề' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? loc.eventTitle : null,
             ),
             const SizedBox(height: 14),
 
             _buildCardTile(
-              title: 'Thời điểm sự kiện',
-              subtitle: _thoiDiem == null ? 'Chưa chọn' : _fmt(_thoiDiem!),
+              title: loc.eventTime,
+              subtitle: _thoiDiem == null ? loc.notChosen : _fmt(_thoiDiem!),
               icon: Icons.calendar_month,
               color: Colors.teal,
               onTap: () async {
-                final r = await _pickDateTime(_thoiDiem);
+                final r = await _pickDateTime(_thoiDiem, loc);
                 if (r != null) setState(() => _thoiDiem = r);
               },
             ),
             const SizedBox(height: 8),
 
             _buildCardTile(
-              title: 'Nhắc lúc (tùy chọn)',
-              subtitle: _nhacLuc == null ? 'Không nhắc' : _fmt(_nhacLuc!),
+              title: loc.remindAt,
+              subtitle: _nhacLuc == null ? loc.noReminder : _fmt(_nhacLuc!),
               icon: Icons.alarm,
               color: Colors.orange,
               onTap: () async {
-                final r = await _pickDateTime(_nhacLuc ?? _thoiDiem);
+                final r = await _pickDateTime(_nhacLuc ?? _thoiDiem, loc);
                 if (r != null) setState(() => _nhacLuc = r);
               },
               onLongPress: () => setState(() => _nhacLuc = null),
             ),
-            const SizedBox(height: 8),
-
-            SwitchListTile(
-              title: const Text('Lặp hằng năm'),
-              value: _lapHangNam,
-              onChanged: (v) => setState(() => _lapHangNam = v),
-              activeColor: Colors.teal,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              tileColor: Colors.white,
-            ),
             const SizedBox(height: 10),
 
-            const Text(
-              'Chọn màu thẻ',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
+            Text(loc.pickColor, style: const TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 10,
               children: [
-                for (final c in [
-                  0xFF4CAF50,
-                  0xFFF44336,
-                  0xFF2196F3,
-                  0xFFFFC107,
-                  0xFF9C27B0
-                ])
+                for (final c in [0xFF4CAF50, 0xFFF44336, 0xFF2196F3, 0xFFFFC107, 0xFF9C27B0])
                   GestureDetector(
                     onTap: () => setState(() => _mau = c),
                     child: AnimatedContainer(
@@ -253,16 +222,12 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                         color: Color(c),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color:
-                              _mau == c ? Colors.black : Colors.transparent,
+                          color: _mau == c ? Colors.black : Colors.transparent,
                           width: 2.5,
                         ),
                         boxShadow: [
                           if (_mau == c)
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 6,
-                            ),
+                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6),
                         ],
                       ),
                     ),
@@ -275,13 +240,11 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
               controller: _ghiChu,
               maxLines: 3,
               decoration: InputDecoration(
-                labelText: 'Ghi chú (tùy chọn)',
+                labelText: loc.note,
                 prefixIcon: const Icon(Icons.notes, color: Colors.teal),
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
             const SizedBox(height: 24),
@@ -289,19 +252,17 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _luu,
+                onPressed: () => _luu(loc),
                 icon: const Icon(Icons.save),
-                label: const Text(
-                  'Lưu sự kiện',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                label: Text(
+                  loc.saveEvent,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 3,
                 ),
               ),

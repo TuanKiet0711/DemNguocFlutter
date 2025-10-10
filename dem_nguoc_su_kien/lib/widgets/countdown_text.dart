@@ -1,21 +1,21 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
 import '../../main.dart';
 
 class CountdownText extends StatefulWidget {
-  final DateTime target;            // mốc đếm đến
+  final DateTime target;
   final TextStyle? style;
-  final String doneText;            // text khi kết thúc
-  final bool notifyWhenDone;        // có bắn noti khi về 0 không
+  final String doneText;
+  final bool notifyWhenDone;
 
   const CountdownText({
     super.key,
     required this.target,
     this.style,
-    this.doneText = 'ĐÃ ĐẾN HẸN',
+    this.doneText = '🎉 ĐÃ ĐẾN HẸN 🎉',
     this.notifyWhenDone = true,
   });
 
@@ -24,82 +24,152 @@ class CountdownText extends StatefulWidget {
 }
 
 class _CountdownTextState extends State<CountdownText>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   Timer? _timer;
   Duration _diff = Duration.zero;
   bool _finished = false;
 
-  // Confetti (pháo giấy)
   late final ConfettiController _confetti;
-
-  // Pulse + glow cho text DONE
   late final AnimationController _pulseAC;
   late final Animation<double> _pulse;
-
-  // Shimmer (ánh sáng chạy qua chữ)
   late final AnimationController _shimmerAC;
+  late final AnimationController _fadeOutAC;
+
+  OverlayEntry? _confettiOverlay;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
-    _confetti = ConfettiController(duration: const Duration(seconds: 2));
+    _confetti = ConfettiController(duration: const Duration(seconds: 8));
 
     _pulseAC = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _pulse = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.18).chain(CurveTween(curve: Curves.easeOutBack)), weight: 55),
-      TweenSequenceItem(tween: Tween(begin: 1.18, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 45),
-    ]).animate(_pulseAC);
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+    _pulse = Tween<double>(begin: 0.96, end: 1.09)
+        .chain(CurveTween(curve: Curves.easeInOut))
+        .animate(_pulseAC);
 
     _shimmerAC = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 2200),
     )..repeat();
 
-    _recompute();
+    _fadeOutAC = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+
+    // ❗ Trì hoãn đến sau frame đầu để Overlay sẵn sàng
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _recompute(force: true);
+    });
+
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _recompute());
+  }
+
+  // 👉 Bắt sự kiện khi app resume (mở lại từ nền)
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Khi mở lại app, cập nhật lại thời gian chính xác
+      _recompute(force: true);
+    }
   }
 
   Future<void> _onFinish() async {
     if (_finished) return;
     _finished = true;
 
-    // 1) Nổ confetti + pulse chữ
-    _confetti.play();
-    _pulseAC.forward(from: 0);
+    // ❗ Chèn overlay + play confetti sau frame kế tiếp để chắc chắn có Overlay
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showGlobalConfetti();
+      _confetti.play();
+    });
 
-    // 2) Bắn local notification (kèm âm thanh)
     if (widget.notifyWhenDone) {
       await flutterLocalNotificationsPlugin.show(
         DateTime.now().millisecondsSinceEpoch & 0x7fffffff,
         widget.doneText,
-        null,
+        'Sự kiện của bạn đã đến!',
         NotificationDetails(
           android: AndroidNotificationDetails(
-            'su_kien',           // giữ nguyên channel đã dùng trong app
-            'Sự kiện',
-            importance: Importance.max,
+            kEventChannel.id,
+            kEventChannel.name,
+            channelDescription: kEventChannel.description,
+            importance: Importance.high,
             priority: Priority.high,
             playSound: true,
-            sound: const RawResourceAndroidNotificationSound('ding'), // <== dùng ding.mp3
+            sound: const RawResourceAndroidNotificationSound('ding'),
+            enableVibration: true,
+            icon: '@mipmap/ic_launcher',
           ),
         ),
       );
     }
+
+    // 6s sau thì fade-out confetti, 9s thì tháo overlay (dư 1s để chắc chắn)
+    Future.delayed(const Duration(seconds: 6), () {
+      if (mounted) _fadeOutAC.forward();
+    });
+    Future.delayed(const Duration(seconds: 9), _removeGlobalConfetti);
   }
 
-  void _recompute() {
+  void _showGlobalConfetti() {
+    _removeGlobalConfetti();
+
+    // ❗ Phòng trường hợp Overlay.of(context) null
+    final overlayState =
+        Overlay.maybeOf(context, rootOverlay: true) ?? Navigator.of(context).overlay;
+    if (overlayState == null) return; // Không có overlay => thoát an toàn
+
+    _confettiOverlay = OverlayEntry(
+      builder: (_) => Positioned.fill(
+        child: FadeTransition(
+          opacity: ReverseAnimation(_fadeOutAC),
+          child: IgnorePointer(
+            child: ConfettiWidget(
+              confettiController: _confetti,
+              blastDirectionality: BlastDirectionality.explosive,
+              emissionFrequency: 0.14,
+              numberOfParticles: 30,
+              gravity: 0.35,
+              maxBlastForce: 18,
+              minBlastForce: 6,
+              colors: const [
+                Colors.tealAccent,
+                Colors.amber,
+                Colors.pinkAccent,
+                Colors.lightBlue,
+                Colors.deepPurpleAccent,
+                Colors.greenAccent,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    overlayState.insert(_confettiOverlay!);
+  }
+
+  void _removeGlobalConfetti() {
+    _confettiOverlay?.remove();
+    _confettiOverlay = null;
+  }
+
+  void _recompute({bool force = false}) {
     final now = DateTime.now();
     final next = widget.target.difference(now);
-
     if (!mounted) return;
-    setState(() => _diff = next);
 
-    if (next.inSeconds <= 0) {
-      _onFinish();
+    // Nếu force = true (mở lại app), cho phép cập nhật và tái trigger hiệu ứng nếu cần
+    if (force || next.inSeconds != _diff.inSeconds) {
+      setState(() => _diff = next);
+      if (next.inSeconds <= 0) {
+        _onFinish();
+      }
     }
   }
 
@@ -108,17 +178,20 @@ class _CountdownTextState extends State<CountdownText>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.target != widget.target) {
       _finished = false;
-      _pulseAC.reset();
-      _recompute();
+      _fadeOutAC.reset(); // reset lại fade-out phòng khi đổi target sau khi bắn xong
+      _recompute(force: true);
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _confetti.dispose();
     _pulseAC.dispose();
     _shimmerAC.dispose();
+    _fadeOutAC.dispose();
+    _removeGlobalConfetti();
     super.dispose();
   }
 
@@ -127,76 +200,56 @@ class _CountdownTextState extends State<CountdownText>
     final isDone = _diff.isNegative || _diff.inSeconds == 0;
 
     if (isDone) {
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          // Confetti layer
-          Positioned.fill(
-            child: IgnorePointer(
-              child: ConfettiWidget(
-                confettiController: _confetti,
-                blastDirectionality: BlastDirectionality.explosive,
-                emissionFrequency: 0.12,
-                numberOfParticles: 16,
-                gravity: 0.6,
-                maxBlastForce: 12,
-                minBlastForce: 5,
+      return AnimatedBuilder(
+        animation: Listenable.merge([_pulseAC, _shimmerAC]),
+        builder: (_, __) {
+          final gradient = LinearGradient(
+            colors: const [
+              Color(0xFF00BCD4),
+              Color(0xFFB2FF59),
+              Color(0xFFFFF59D),
+              Color(0xFF00BCD4),
+            ],
+            stops: const [0.0, 0.35, 0.7, 1.0],
+            transform: GradientRotation(_shimmerAC.value * 2 * pi),
+          );
+
+          return Transform.scale(
+            scale: _pulse.value,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.teal.withOpacity(0.35),
+                    blurRadius: 14,
+                    spreadRadius: 1.5,
+                  ),
+                ],
+              ),
+              child: ShaderMask(
+                shaderCallback: (rect) => gradient.createShader(rect),
+                blendMode: BlendMode.srcIn,
+                child: Text(
+                  widget.doneText,
+                  style: widget.style ??
+                      const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 28,
+                        letterSpacing: 1.3,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
-          ),
-
-          // Shimmer + pulse text
-          AnimatedBuilder(
-            animation: Listenable.merge([_pulseAC, _shimmerAC]),
-            builder: (_, __) {
-              final gradient = LinearGradient(
-                begin: Alignment(-1 + 2 * _shimmerAC.value, 0),
-                end: Alignment(1 + 2 * _shimmerAC.value, 0),
-                colors: const [
-                  Color(0xFF00695C),
-                  Color(0xFF26A69A),
-                  Color(0xFF00695C),
-                ],
-                stops: const [0.25, 0.5, 0.75],
-              );
-
-              return Transform.scale(
-                scale: _pulse.value,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.teal.withOpacity(0.25),
-                        blurRadius: 14,
-                        spreadRadius: 1.5,
-                      ),
-                    ],
-                  ),
-                  child: ShaderMask(
-                    shaderCallback: (rect) => gradient.createShader(rect),
-                    blendMode: BlendMode.srcIn,
-                    child: Text(
-                      widget.doneText,
-                      style: widget.style ??
-                          const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                            letterSpacing: 0.3,
-                          ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+          );
+        },
       );
     }
 
-    // Chưa hết giờ -> hiển thị thời gian còn lại
+    // Đếm ngược
     final d = _diff.inDays;
     final h = _diff.inHours % 24;
     final m = _diff.inMinutes % 60;
