@@ -1,5 +1,6 @@
 // lib/screens/login_screen.dart
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -47,19 +48,43 @@ class _LoginScreenState extends State<LoginScreen>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   Future<void> _signInEmail() async {
-    if (!formKey.currentState!.validate()) return;
-    setState(() => loading = true);
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailC.text.trim(),
-        password: passC.text.trim(),
-      );
-    } on FirebaseAuthException catch (e) {
-      _toast(e.message ?? 'Đăng nhập thất bại');
-    } finally {
-      if (mounted) setState(() => loading = false);
-    }
+  if (!formKey.currentState!.validate()) return;
+  setState(() => loading = true);
+  try {
+    await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: emailC.text.trim(),
+      password: passC.text.trim(),
+    );
+} on FirebaseAuthException catch (e) {
+  // In ra mã lỗi để kiểm tra nếu cần
+  debugPrint('FirebaseAuth error: ${e.code}');
+
+  final code = e.code.toLowerCase();
+  String msg;
+
+  if (code == 'user-not-found' ||
+      code == 'wrong-password' ||
+      code == 'invalid-credential' ||              // Firebase mới dùng mã này
+      code == 'invalid-login-credentials') {       // đôi khi trả về mã này
+    msg = 'Email hoặc mật khẩu không đúng';
+  } else if (code == 'invalid-email') {
+    msg = 'Email không hợp lệ';
+  } else if (code == 'user-disabled') {
+    msg = 'Tài khoản này đã bị vô hiệu hóa';
+  } else if (code == 'too-many-requests') {
+    msg = 'Bạn đã thử quá nhiều lần, vui lòng thử lại sau';
+  } else if (code == 'network-request-failed') {
+    msg = 'Không có kết nối mạng, vui lòng kiểm tra lại';
+  } else {
+    msg = 'Đăng nhập thất bại, vui lòng thử lại';
   }
+
+  _toast(msg);
+}
+ finally {
+    if (mounted) setState(() => loading = false);
+  }
+}
 
   Future<void> _signInGoogle() async {
     setState(() => loading = true);

@@ -2,6 +2,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart'; // để dùng debugPrint
+
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -48,23 +50,46 @@ class _RegisterScreenState extends State<RegisterScreen>
   void _toast(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-  Future<void> _register() async {
-    if (!formKey.currentState!.validate()) return;
-    setState(() => loading = true);
-    try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailC.text.trim(),
-        password: passC.text.trim(),
-      );
-      if (!mounted) return;
-      Navigator.pop(context);
-      _toast('Đăng ký thành công!');
-    } on FirebaseAuthException catch (e) {
-      _toast(e.message ?? 'Lỗi đăng ký tài khoản');
-    } finally {
-      if (mounted) setState(() => loading = false);
+ Future<void> _register() async {
+  if (!formKey.currentState!.validate()) return;
+  setState(() => loading = true);
+  try {
+    await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      email: emailC.text.trim(),
+      password: passC.text.trim(),
+    );
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    _toast('Đăng ký thành công!');
+  } on FirebaseAuthException catch (e) {
+    debugPrint('FirebaseAuth register error: ${e.code} — ${e.message}');
+    final code = e.code.toLowerCase();
+    String msg;
+
+    if (code == 'email-already-in-use') {
+      msg = 'Email này đã được sử dụng';
+    } else if (code == 'invalid-email') {
+      msg = 'Email không hợp lệ';
+    } else if (code == 'weak-password') {
+      msg = 'Mật khẩu quá yếu (tối thiểu 6 ký tự)';
+    } else if (code == 'operation-not-allowed') {
+      // Trường hợp chưa bật Email/Password trong Firebase Console
+      msg = 'Đăng ký đang tạm thời không khả dụng';
+    } else if (code == 'too-many-requests') {
+      msg = 'Bạn thao tác quá nhiều lần, hãy thử lại sau';
+    } else if (code == 'network-request-failed') {
+      msg = 'Không có kết nối mạng, vui lòng kiểm tra lại';
+    } else {
+      msg = 'Lỗi đăng ký tài khoản, vui lòng thử lại';
     }
+
+    _toast(msg);
+  } finally {
+    if (mounted) setState(() => loading = false);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
