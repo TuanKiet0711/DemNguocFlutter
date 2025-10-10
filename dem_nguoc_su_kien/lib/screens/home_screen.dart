@@ -1,10 +1,10 @@
+// lib/screens/home_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
-import '../../theme_controller.dart';
 import '../../language_controller.dart';
 import '../../i18n/app_localizations.dart';
 
@@ -45,9 +45,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_avatarPath != null && _avatarPath!.isNotEmpty) {
       if (_avatarPath!.startsWith('file:')) {
         final f = File(_avatarPath!.substring(5));
-        if (f.existsSync()) return CircleAvatar(radius: 20, backgroundImage: FileImage(f));
+        if (f.existsSync()) {
+          return CircleAvatar(radius: 20, backgroundImage: FileImage(f));
+        }
       } else if (_avatarPath!.startsWith('asset:')) {
-        return CircleAvatar(radius: 20, backgroundImage: AssetImage(_avatarPath!.substring(6)));
+        return CircleAvatar(
+          radius: 20,
+          backgroundImage: AssetImage(_avatarPath!.substring(6)),
+        );
       }
     }
     if ((user.photoURL ?? '').isNotEmpty) {
@@ -65,9 +70,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final loc = AppLoc.of(context);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return Scaffold(
-        backgroundColor: ThemeController.I.backgroundColor,
-        body: Center(child: Text(loc.notLoggedIn)),
+      return const Scaffold(
+        backgroundColor: Color(0xFFF3F7F7),
+        body: Center(child: Text('Bạn chưa đăng nhập.')),
       );
     }
 
@@ -75,10 +80,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final now = DateTime.now();
 
     return AnimatedBuilder(
-      animation: Listenable.merge([ThemeController.I, LanguageController.I]),
+      animation: LanguageController.I, // chỉ lắng nghe đổi ngôn ngữ
       builder: (_, __) {
         return Scaffold(
-          backgroundColor: ThemeController.I.backgroundColor,
+          backgroundColor: const Color(0xFFF3F7F7),
           appBar: AppBar(
             title: Text(
               loc.titleEventList,
@@ -93,8 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.language, color: Colors.white),
                 onPressed: () => LanguageController.I.toggle(),
               ),
-              // 🌞/🌙 Đổi theme
-            
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: _avatarWidget(user),
@@ -102,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
 
+          // FAB “+”
           floatingActionButton: FloatingActionButton(
             onPressed: () async {
               await Navigator.push(
@@ -135,8 +139,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, i) {
                   final e = all[i];
                   final color = Color(e.mau);
-                  final time = DateFormat('HH:mm dd/MM/yyyy', LanguageController.I.locale.languageCode)
-                      .format(e.thoiDiem);
+                  final time = DateFormat(
+                    'HH:mm dd/MM/yyyy',
+                    LanguageController.I.locale.languageCode,
+                  ).format(e.thoiDiem);
                   final isPast = e.thoiDiem.isBefore(now);
 
                   return Container(
