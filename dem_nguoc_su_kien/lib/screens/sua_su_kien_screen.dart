@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
 
-import '../../main.dart';
 import '../../i18n/app_localizations.dart';
 import '../../language_controller.dart';
 import '../su_kien.dart';
@@ -25,7 +22,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
   late TextEditingController _ghiChu;
 
   DateTime? _thoiDiem;
-  DateTime? _nhacLuc;
   int _mau = 0xFF4CAF50;
 
   @override
@@ -35,7 +31,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
     _tieuDe = TextEditingController(text: e.tieuDe);
     _ghiChu = TextEditingController(text: e.ghiChu ?? '');
     _thoiDiem = e.thoiDiem;
-    _nhacLuc = e.nhacLuc;
     _mau = e.mau;
   }
 
@@ -88,36 +83,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
     return DateTime(d.year, d.month, d.day, t.hour, t.minute);
   }
 
-  Future<void> _scheduleLocalNotification({
-    required int id,
-    required String title,
-    String? body,
-    required DateTime at,
-  }) async {
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(at, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'su_kien_ding',
-          'Sự kiện (có âm)',
-          channelDescription: 'Kênh thông báo sự kiện kèm âm thanh ding',
-          importance: Importance.high,
-          priority: Priority.high,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('ding'),
-          enableVibration: true,
-          icon: '@mipmap/ic_launcher',
-        ),
-      ),
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.dateAndTime,
-    );
-  }
-
   Future<void> _capNhat(AppLoc loc) async {
     if (!_frm.currentState!.validate()) return;
     if (_thoiDiem == null) {
@@ -130,7 +95,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
     final data = {
       'tieuDe': _tieuDe.text.trim(),
       'thoiDiem': Timestamp.fromDate(_thoiDiem!),
-      'nhacLuc': _nhacLuc == null ? null : Timestamp.fromDate(_nhacLuc!),
       'mau': _mau,
       'ghiChu': _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
       'nguoiTao': uid,
@@ -140,16 +104,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
         .collection('su_kien')
         .doc(widget.suKien.id)
         .update(data);
-
-    if (_nhacLuc != null && _nhacLuc!.isAfter(DateTime.now())) {
-      final baseId = widget.suKien.id.hashCode & 0x7FFFFFFF;
-      await _scheduleLocalNotification(
-        id: baseId,
-        title: '${loc.soon}${_tieuDe.text.trim()}',
-        body: _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
-        at: _nhacLuc!,
-      );
-    }
 
     if (!mounted) return;
     Navigator.pop(context);
@@ -174,7 +128,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
         foregroundColor: Colors.white,
         title: Text(loc.editEvent, style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-       
       ),
       body: Form(
         key: _frm,
@@ -203,19 +156,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
                 final r = await _pickDateTime(_thoiDiem, loc);
                 if (r != null) setState(() => _thoiDiem = r);
               },
-            ),
-            const SizedBox(height: 8),
-
-            _buildCardTile(
-              title: loc.remindAt,
-              subtitle: _nhacLuc == null ? loc.noReminder : _fmt(_nhacLuc!),
-              icon: Icons.alarm,
-              color: Colors.orange,
-              onTap: () async {
-                final r = await _pickDateTime(_nhacLuc ?? _thoiDiem, loc);
-                if (r != null) setState(() => _nhacLuc = r);
-              },
-              onLongPress: () => setState(() => _nhacLuc = null),
             ),
             const SizedBox(height: 10),
 

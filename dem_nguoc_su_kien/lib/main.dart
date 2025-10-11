@@ -14,6 +14,10 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'language_controller.dart';
 import 'i18n/app_localizations.dart';
+import 'screens/onboarding_screen.dart';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/user_meta_service.dart';
 
 final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -37,7 +41,7 @@ Future<void> _initLocalNotifications() async {
   const initSettings = InitializationSettings(android: androidInit);
   await flutterLocalNotificationsPlugin.initialize(initSettings);
   tz.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
+  tz.setLocalLocation(tz.local); // dùng tz local
   final android = flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
   if (android != null) {
@@ -111,6 +115,9 @@ class DemNguocApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
+          routes: {
+            '/auth': (_) => const AuthGate(),
+          },
           home: const AuthGate(),
         );
       },
@@ -120,6 +127,7 @@ class DemNguocApp extends StatelessWidget {
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -129,7 +137,38 @@ class AuthGate extends StatelessWidget {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         final user = snap.data;
-        return user == null ? const LoginScreen() : const HomeScreen();
+        if (user == null) {
+          return const LoginScreen();
+        }
+
+        // Đã đăng nhập ⇒ kiểm tra users/{uid} để quyết định Onboarding
+        return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          future: UserMetaService().getMeta(user.uid),
+          builder: (context, s) {
+            if (s.connectionState == ConnectionState.waiting) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+
+            if (!s.hasData || !s.data!.exists) {
+              // Tài khoản mới chưa có doc ⇒ tạo và show Onboarding
+              UserMetaService().ensureNewUserDoc(
+                user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+              );
+              return const OnboardingScreen();
+            }
+
+            final data = s.data!.data() ?? {};
+            final onboarded = (data['onboarded'] == true);
+            if (!onboarded) {
+              return const OnboardingScreen();
+            }
+
+            return const HomeScreen();
+          },
+        );
       },
     );
   }

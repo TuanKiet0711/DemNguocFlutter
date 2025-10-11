@@ -11,6 +11,7 @@ class AppLoc {
 
   static const _values = {
     'vi': {
+      // ===== CŨ =====
       'language': 'Ngôn ngữ',
       'notLoggedIn': 'Bạn chưa đăng nhập.',
       'titleEventList': 'Danh sách sự kiện',
@@ -38,8 +39,27 @@ class AppLoc {
       'done': 'Xong',
       'soon': 'Sắp đến: ',
       'pleasePickTime': 'Chọn thời điểm',
+
+      // ===== MỚI: Onboarding =====
+      'welcome': 'Chào mừng!',
+      'chooseLanguage': 'Chọn ngôn ngữ',
+      'onbTitle1': 'Đếm ngược sự kiện',
+      'onbDesc1': 'Tạo sự kiện quan trọng và theo dõi thời gian đến hẹn.',
+      'onbTitle2': 'Thông báo thông minh',
+      'onbDesc2': 'Bật thông báo để được nhắc khi sắp đến hạn.',
+      'onbTitle3': 'Ảnh & avatar',
+      'onbDesc3': 'Cho phép camera/thư viện để chọn và cắt avatar.',
+      'enableNotifications': 'Bật thông báo',
+      'enableMedia': 'Cho phép camera/thư viện',
+      'skip': 'Bỏ qua',
+      'next': 'Tiếp',
+      'getStarted': 'Bắt đầu',
+      'later': 'Để sau',
+      'granted': 'Đã cấp quyền',
+      'denied': 'Đã từ chối',
     },
     'en': {
+      // ===== OLD =====
       'language': 'Language',
       'notLoggedIn': 'You are not logged in.',
       'titleEventList': 'Event list',
@@ -67,12 +87,30 @@ class AppLoc {
       'done': 'Done',
       'soon': 'Upcoming: ',
       'pleasePickTime': 'Please pick event time',
+
+      // ===== NEW: Onboarding =====
+      'welcome': 'Welcome!',
+      'chooseLanguage': 'Choose language',
+      'onbTitle1': 'Event countdown',
+      'onbDesc1': 'Create important events and track the time to them.',
+      'onbTitle2': 'Smart notifications',
+      'onbDesc2': 'Enable notifications to be reminded before due.',
+      'onbTitle3': 'Photos & avatar',
+      'onbDesc3': 'Allow camera/gallery to pick and crop your avatar.',
+      'enableNotifications': 'Enable notifications',
+      'enableMedia': 'Allow camera/gallery',
+      'skip': 'Skip',
+      'next': 'Next',
+      'getStarted': 'Get started',
+      'later': 'Later',
+      'granted': 'Granted',
+      'denied': 'Denied',
     },
   };
 
   String _t(String k) => (_values[locale.languageCode] ?? _values['en']!)[k] ?? k;
 
-  // getters
+  // ===== Getters cũ =====
   String get language => _t('language');
   String get notLoggedIn => _t('notLoggedIn');
   String get titleEventList => _t('titleEventList');
@@ -83,7 +121,6 @@ class AppLoc {
   String get deleteEvent => _t('deleteEvent');
   String get cancel => _t('cancel');
   String get deletedToast => _t('deletedToast');
-
   String get addEvent => _t('addEvent');
   String get eventTitle => _t('eventTitle');
   String get eventHint => _t('eventHint');
@@ -101,6 +138,24 @@ class AppLoc {
   String get done => _t('done');
   String get soon => _t('soon');
   String get pleasePickTime => _t('pleasePickTime');
+
+  // ===== Getters mới =====
+  String get welcome => _t('welcome');
+  String get chooseLanguage => _t('chooseLanguage');
+  String get onbTitle1 => _t('onbTitle1');
+  String get onbDesc1 => _t('onbDesc1');
+  String get onbTitle2 => _t('onbTitle2');
+  String get onbDesc2 => _t('onbDesc2');
+  String get onbTitle3 => _t('onbTitle3');
+  String get onbDesc3 => _t('onbDesc3');
+  String get enableNotifications => _t('enableNotifications');
+  String get enableMedia => _t('enableMedia');
+  String get skip => _t('skip');
+  String get next => _t('next');
+  String get getStarted => _t('getStarted');
+  String get later => _t('later');
+  String get granted => _t('granted');
+  String get denied => _t('denied');
 
   String deleteConfirm(String title) {
     if (locale.languageCode == 'vi') {

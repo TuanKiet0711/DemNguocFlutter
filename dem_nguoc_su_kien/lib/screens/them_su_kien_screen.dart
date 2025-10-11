@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import '../../main.dart';
 import '../../i18n/app_localizations.dart';
 import '../../language_controller.dart';
 import '../su_kien.dart';
@@ -23,7 +20,6 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
   final _ghiChu = TextEditingController();
 
   DateTime? _thoiDiem;
-  DateTime? _nhacLuc;
   int _mau = 0xFF4CAF50;
 
   String _fmt(DateTime d) =>
@@ -75,36 +71,6 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
     return DateTime(d.year, d.month, d.day, t.hour, t.minute);
   }
 
-  Future<void> _scheduleLocalNotification({
-    required int id,
-    required String title,
-    String? body,
-    required DateTime at,
-  }) async {
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(at, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'su_kien_ding',
-          'Sự kiện (có âm)',
-          channelDescription: 'Kênh thông báo sự kiện kèm âm thanh ding',
-          importance: Importance.high,
-          priority: Priority.high,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('ding'),
-          enableVibration: true,
-          icon: '@mipmap/ic_launcher',
-        ),
-      ),
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.dateAndTime,
-    );
-  }
-
   Future<void> _luu(AppLoc loc) async {
     if (!_frm.currentState!.validate()) return;
     if (_thoiDiem == null) {
@@ -118,23 +84,12 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
       id: 'auto',
       tieuDe: _tieuDe.text.trim(),
       thoiDiem: _thoiDiem!,
-      nhacLuc: _nhacLuc,
       mau: _mau,
       ghiChu: _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
       nguoiTao: uid,
     );
 
     await _svc.them(e);
-
-    if (_nhacLuc != null && _nhacLuc!.isAfter(DateTime.now())) {
-      final baseId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      await _scheduleLocalNotification(
-        id: baseId,
-        title: '${loc.soon}${e.tieuDe}',
-        body: e.ghiChu,
-        at: _nhacLuc!,
-      );
-    }
 
     if (!mounted) return;
     Navigator.pop(context);
@@ -160,7 +115,6 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
         title: Text(loc.addEvent, style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 3,
-        
       ),
       body: Form(
         key: _frm,
@@ -190,19 +144,6 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                 final r = await _pickDateTime(_thoiDiem, loc);
                 if (r != null) setState(() => _thoiDiem = r);
               },
-            ),
-            const SizedBox(height: 8),
-
-            _buildCardTile(
-              title: loc.remindAt,
-              subtitle: _nhacLuc == null ? loc.noReminder : _fmt(_nhacLuc!),
-              icon: Icons.alarm,
-              color: Colors.orange,
-              onTap: () async {
-                final r = await _pickDateTime(_nhacLuc ?? _thoiDiem, loc);
-                if (r != null) setState(() => _nhacLuc = r);
-              },
-              onLongPress: () => setState(() => _nhacLuc = null),
             ),
             const SizedBox(height: 10),
 

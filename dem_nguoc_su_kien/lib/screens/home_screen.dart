@@ -15,6 +15,10 @@ import 'them_su_kien_screen.dart';
 import 'sua_su_kien_screen.dart';
 import '../widgets/countdown_text.dart';
 
+// 👇 thêm 2 import cho tour
+import '../tutorial/coach_mark.dart';
+import '../services/user_meta_service.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -27,6 +31,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final _picker = ImagePicker();
   final _avatarImages = List.generate(8, (i) => 'assets/avatars/a${i + 1}.png');
 
+  // 👇 các key để highlight trong tour
+  final GlobalKey _kLang = GlobalKey();
+  final GlobalKey _kAvatar = GlobalKey();
+  final GlobalKey _kFab = GlobalKey();
+  final GlobalKey _kEdit = GlobalKey();
+  final GlobalKey _kDelete = GlobalKey();
+
+  bool _guideStarted = false;
+  bool _guideEditDeleteStarted = false;
+
   String get _prefsKey {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     return 'avatar_path_$uid';
@@ -36,6 +50,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadAvatarChoice();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      final should = await UserMetaService().shouldRunGuide(uid);
+      if (!mounted || !should || _guideStarted) return;
+      await Future.delayed(const Duration(milliseconds: 250));
+      _startGuide();
+    });
   }
 
   Future<void> _loadAvatarChoice() async {
@@ -57,7 +80,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _pickAndCrop(ImageSource source) async {
     final picked = await _picker.pickImage(source: source, imageQuality: 85);
     if (picked == null) return;
-
     final cropped = await ImageCropper().cropImage(
       sourcePath: picked.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
@@ -75,8 +97,71 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
-
     if (cropped != null) await _saveAvatarChoice('file:${cropped.path}');
+  }
+
+  // 👇 Tour hướng dẫn chính
+  Future<void> _startGuide() async {
+    if (!mounted || _guideStarted) return;
+    _guideStarted = true;
+
+    final steps = <CoachStep>[
+      CoachStep(
+        key: _kLang,
+        title: 'Đổi ngôn ngữ',
+        body: 'Bấm để chuyển nhanh giữa Tiếng Việt và English.',
+        align: Alignment.bottomCenter,
+      ),
+      CoachStep(
+        key: _kAvatar,
+        title: 'Hồ sơ & đăng xuất',
+        body: 'Chạm avatar để thay ảnh, chọn ảnh có sẵn, hoặc đăng xuất.',
+        align: Alignment.bottomCenter,
+      ),
+      CoachStep(
+        key: _kFab,
+        title: 'Thêm sự kiện mới',
+        body: 'Bấm để tạo sự kiện và bắt đầu đếm ngược.',
+        align: Alignment.topCenter,
+      ),
+    ];
+
+    final coach = CoachMark(context, steps);
+    await coach.start();
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      await UserMetaService().markGuided(uid);
+    }
+  }
+
+  // 👇 Tour hướng dẫn Sửa/Xóa
+  Future<void> _startGuideEditDelete() async {
+    if (!mounted || _guideEditDeleteStarted) return;
+    _guideEditDeleteStarted = true;
+
+    final steps = <CoachStep>[
+      CoachStep(
+        key: _kEdit,
+        title: 'Sửa sự kiện',
+        body: 'Bấm để chỉnh lại tiêu đề, thời điểm hoặc ghi chú sự kiện.',
+        align: Alignment.bottomCenter,
+      ),
+      CoachStep(
+        key: _kDelete,
+        title: 'Xóa sự kiện',
+        body: 'Nếu không cần nữa, bạn có thể xóa sự kiện tại đây.',
+        align: Alignment.topCenter,
+      ),
+    ];
+
+    final coach = CoachMark(context, steps);
+    await coach.start();
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      await UserMetaService().markGuidedEditDelete(uid);
+    }
   }
 
   Widget _avatarWidget(User user) {
@@ -100,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _avatarMenu(User user) {
     return PopupMenuButton<String>(
+      position: PopupMenuPosition.under,
       offset: const Offset(0, 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 8,
@@ -122,13 +208,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.all(12),
                     child: Wrap(
                       spacing: 10,
+                      runSpacing: 10,
                       children: _avatarImages.map((path) {
                         return GestureDetector(
                           onTap: () {
                             Navigator.pop(context);
                             _saveAvatarChoice('asset:$path');
                           },
-                          child: CircleAvatar(radius: 28, backgroundImage: AssetImage(path)),
+                          child: CircleAvatar(
+                            radius: 28,
+                            backgroundImage: AssetImage(path),
+                          ),
                         );
                       }).toList(),
                     ),
@@ -143,28 +233,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       itemBuilder: (_) => [
-        PopupMenuItem(
-          enabled: false,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Column(
-            children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundImage: _avatarPath != null && _avatarPath!.startsWith('file:')
-                    ? FileImage(File(_avatarPath!.substring(5)))
-                    : _avatarPath != null && _avatarPath!.startsWith('asset:')
-                        ? AssetImage(_avatarPath!.substring(6)) as ImageProvider
-                        : (user.photoURL != null && user.photoURL!.isNotEmpty)
-                            ? NetworkImage(user.photoURL!)
-                            : const AssetImage('assets/avatars/a1.png'),
-              ),
-              const SizedBox(height: 6),
-              Text(user.email ?? 'Không có email',
-                  style: const TextStyle(fontSize: 13, color: Colors.black54)),
-              const Divider(height: 18, thickness: .8),
-            ],
-          ),
-        ),
         const PopupMenuItem(value: 'camera', child: Text('📸 Chụp ảnh')),
         const PopupMenuItem(value: 'pick', child: Text('🖼️ Chọn từ thư viện')),
         const PopupMenuItem(value: 'assets', child: Text('✨ Chọn avatar có sẵn')),
@@ -209,28 +277,39 @@ class _HomeScreenState extends State<HomeScreen> {
             foregroundColor: Colors.white,
             backgroundColor: Colors.transparent,
             actions: [
-              IconButton(
-                tooltip: loc.language,
-                icon: const Icon(Icons.language, color: Colors.white),
-                onPressed: () => LanguageController.I.toggle(),
+              KeyedSubtree(
+                key: _kLang,
+                child: IconButton(
+                  tooltip: loc.language,
+                  icon: const Icon(Icons.language, color: Colors.white),
+                  onPressed: () => LanguageController.I.toggle(),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: _avatarMenu(user),
+                child: KeyedSubtree(
+                  key: _kAvatar,
+                  child: _avatarMenu(user),
+                ),
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            backgroundColor: const Color(0xFF00A693),
-            icon: const Icon(Icons.add, color: Colors.white, size: 26),
-            label: Text(loc.addEvent,
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ThemSuKienScreen()),
-              );
-            },
+          floatingActionButton: KeyedSubtree(
+            key: _kFab,
+            child: FloatingActionButton.extended(
+              backgroundColor: const Color(0xFF00A693),
+              icon: const Icon(Icons.add, color: Colors.white, size: 26),
+              label: Text(
+                loc.addEvent,
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ThemSuKienScreen()),
+                );
+              },
+            ),
           ),
           body: StreamBuilder<List<SuKien>>(
             stream: _svc.suKienCua(uid),
@@ -240,10 +319,22 @@ class _HomeScreenState extends State<HomeScreen> {
               }
               if (snap.hasError) return Center(child: Text("Lỗi: ${snap.error}"));
               final data = snap.data ?? [];
+
+              // Tour Sửa/Xóa khi có dữ liệu đầu tiên
+              if (data.isNotEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  final should = await UserMetaService().shouldRunGuideEditDelete(uid);
+                  if (should && !_guideEditDeleteStarted) {
+                    await Future.delayed(const Duration(milliseconds: 300));
+                    _startGuideEditDelete();
+                  }
+                });
+              }
+
               if (data.isEmpty) {
                 return Center(
                   child: Text(loc.noEvents,
-                      textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+                      style: const TextStyle(fontSize: 16)),
                 );
               }
 
@@ -300,14 +391,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      e.tieuDe,
-                                      style: const TextStyle(
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
+                                    Text(e.tieuDe,
+                                        style: const TextStyle(
+                                            fontSize: 19,
+                                            fontWeight: FontWeight.w800)),
                                     const SizedBox(height: 3),
                                     Row(
                                       children: [
@@ -316,7 +403,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const SizedBox(width: 4),
                                         Text(time,
                                             style: const TextStyle(
-                                                fontSize: 13.5, color: Colors.black54)),
+                                                fontSize: 13.5,
+                                                color: Colors.black54)),
                                       ],
                                     ),
                                   ],
@@ -327,107 +415,110 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (e.ghiChu?.isNotEmpty == true)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                '📝 ${e.ghiChu}',
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  color: Colors.black54,
-                                  height: 1.3,
-                                ),
-                              ),
+                              child: Text('📝 ${e.ghiChu}',
+                                  style: const TextStyle(
+                                      fontSize: 13.5, color: Colors.black54)),
                             ),
                           const SizedBox(height: 10),
                           Container(
                             width: double.infinity,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
                               color: color.withOpacity(.08),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: color.withOpacity(.25)),
+                              border:
+                                  Border.all(color: color.withOpacity(.25)),
                             ),
                             child: Center(
                               child: isPast
-                                  ? Text(
-                                      loc.arrived,
+                                  ? Text(loc.arrived,
                                       style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.teal,
-                                        fontSize: 16,
-                                      ),
-                                    )
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.teal,
+                                          fontSize: 16))
                                   : CountdownText(
                                       target: e.thoiDiem,
                                       style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: color.darken(),
-                                      ),
-                                      doneText: loc.arrived,
-                                    ),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: color.darken()),
+                                      doneText: loc.arrived),
                             ),
                           ),
                           const SizedBox(height: 10),
-                          // ✅ Nút Sửa + Xóa đây
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
                             children: [
-                              TextButton.icon(
-                                onPressed: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => SuaSuKienScreen(suKien: e),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.edit, color: Colors.teal),
-                                label: Text(
-                                  loc.edit,
-                                  style: const TextStyle(
-                                    color: Colors.teal,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              KeyedSubtree(
+                                key: _kEdit,
+                                child: TextButton.icon(
+                                  onPressed: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            SuaSuKienScreen(suKien: e),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.edit,
+                                      color: Colors.teal),
+                                  label: Text(loc.edit,
+                                      style: const TextStyle(
+                                          color: Colors.teal,
+                                          fontWeight: FontWeight.w600)),
                                 ),
                               ),
-                              TextButton.icon(
-                                onPressed: () async {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (_) => AlertDialog(
-                                      title: Text(loc.deleteEvent),
-                                      content: Text(loc.deleteConfirm(e.tieuDe)),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context, false),
-                                          child: Text(loc.cancel),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () => Navigator.pop(context, true),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.redAccent,
-                                          ),
-                                          child: Text(loc.delete),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirm == true) {
-                                    await _svc.xoa(e.id);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(loc.deletedToast)),
-                                      );
+                              KeyedSubtree(
+                                key: _kDelete,
+                                child: TextButton.icon(
+                                  onPressed: () async {
+                                    final confirm =
+                                        await showDialog<bool>(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        title: Text(loc.deleteEvent),
+                                        content: Text(
+                                            loc.deleteConfirm(e.tieuDe)),
+                                        actions: [
+                                          TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(
+                                                      context, false),
+                                              child: Text(loc.cancel)),
+                                          ElevatedButton(
+                                            onPressed: () =>
+                                                Navigator.pop(
+                                                    context, true),
+                                            style: ElevatedButton
+                                                .styleFrom(
+                                                    backgroundColor:
+                                                        Colors
+                                                            .redAccent),
+                                            child: Text(loc.delete),
+                                          )
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      await _svc.xoa(e.id);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                                content: Text(
+                                                    loc.deletedToast)));
+                                      }
                                     }
-                                  }
-                                },
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                label: Text(
-                                  loc.delete,
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  },
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
+                                  label: Text(loc.delete,
+                                      style: const TextStyle(
+                                          color: Colors.red,
+                                          fontWeight:
+                                              FontWeight.w600)),
                                 ),
                               ),
                             ],

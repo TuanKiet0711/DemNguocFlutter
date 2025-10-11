@@ -1,9 +1,11 @@
-// lib/screens/register_screen.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart'; // để dùng debugPrint
+import 'package:flutter/foundation.dart'; // debugPrint
 
+// ➕ bổ sung để tạo hồ sơ người dùng
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/user_meta_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -50,60 +52,67 @@ class _RegisterScreenState extends State<RegisterScreen>
   void _toast(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
- Future<void> _register() async {
-  if (!formKey.currentState!.validate()) return;
-  setState(() => loading = true);
-  try {
-    await FirebaseAuth.instance.createUserWithEmailAndPassword(
-      email: emailC.text.trim(),
-      password: passC.text.trim(),
-    );
+  Future<void> _register() async {
+    if (!formKey.currentState!.validate()) return;
+    setState(() => loading = true);
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: emailC.text.trim(),
+        password: passC.text.trim(),
+      );
 
-    if (!mounted) return;
-    Navigator.pop(context);
-    _toast('Đăng ký thành công!');
-  } on FirebaseAuthException catch (e) {
-    debugPrint('FirebaseAuth register error: ${e.code} — ${e.message}');
-    final code = e.code.toLowerCase();
-    String msg;
+      // ➕ tạo hồ sơ users/{uid} nếu chưa có
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await UserMetaService().ensureNewUserDoc(
+          uid,
+          email: FirebaseAuth.instance.currentUser?.email,
+          displayName: FirebaseAuth.instance.currentUser?.displayName,
+          photoURL: FirebaseAuth.instance.currentUser?.photoURL,
+        );
+      }
 
-    if (code == 'email-already-in-use') {
-      msg = 'Email này đã được sử dụng';
-    } else if (code == 'invalid-email') {
-      msg = 'Email không hợp lệ';
-    } else if (code == 'weak-password') {
-      msg = 'Mật khẩu quá yếu (tối thiểu 6 ký tự)';
-    } else if (code == 'operation-not-allowed') {
-      // Trường hợp chưa bật Email/Password trong Firebase Console
-      msg = 'Đăng ký đang tạm thời không khả dụng';
-    } else if (code == 'too-many-requests') {
-      msg = 'Bạn thao tác quá nhiều lần, hãy thử lại sau';
-    } else if (code == 'network-request-failed') {
-      msg = 'Không có kết nối mạng, vui lòng kiểm tra lại';
-    } else {
-      msg = 'Lỗi đăng ký tài khoản, vui lòng thử lại';
+      if (!mounted) return;
+      Navigator.pop(context);
+      _toast('Đăng ký thành công!');
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuth register error: ${e.code} — ${e.message}');
+      final code = e.code.toLowerCase();
+      String msg;
+      if (code == 'email-already-in-use') {
+        msg = 'Email này đã được sử dụng';
+      } else if (code == 'invalid-email') {
+        msg = 'Email không hợp lệ';
+      } else if (code == 'weak-password') {
+        msg = 'Mật khẩu quá yếu (tối thiểu 6 ký tự)';
+      } else if (code == 'operation-not-allowed') {
+        msg = 'Đăng ký đang tạm thời không khả dụng';
+      } else if (code == 'too-many-requests') {
+        msg = 'Bạn thao tác quá nhiều lần, hãy thử lại sau';
+      } else if (code == 'network-request-failed') {
+        msg = 'Không có kết nối mạng, vui lòng kiểm tra lại';
+      } else {
+        msg = 'Lỗi đăng ký tài khoản, vui lòng thử lại';
+      }
+      _toast(msg);
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-
-    _toast(msg);
-  } finally {
-    if (mounted) setState(() => loading = false);
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
     final h = MediaQuery.of(context).size.height;
-    final compact = h < 740; // tăng “compact mode” cho máy thấp
+    final compact = h < 740;
 
     return AnimatedBuilder(
       animation: _ac,
       builder: (_, __) {
         return Scaffold(
-          resizeToAvoidBottomInset: false, // KHÔNG scroll
+          resizeToAvoidBottomInset: false,
           body: Stack(
             children: [
-              // ===== BG gradient động =====
+              // BG gradient
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
@@ -121,17 +130,15 @@ class _RegisterScreenState extends State<RegisterScreen>
                   ),
                 ),
               ),
-              Positioned.fill(
-                  child: Container(color: Colors.white.withOpacity(.12))),
+              Positioned.fill(child: Container(color: Colors.white.withOpacity(.12))),
               Positioned.fill(child: const _BubblesLayer()),
 
-              // ===== Nội dung =====
+              // Nội dung
               SafeArea(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(16, compact ? 8 : 14, 16, 10),
                   child: Column(
                     children: [
-                      // hàng trên: back + để trống cân đối
                       Row(
                         children: [
                           IconButton(
@@ -145,12 +152,10 @@ class _RegisterScreenState extends State<RegisterScreen>
                       ),
                       const SizedBox(height: 6),
 
-                      // ===== Header đồng hồ cát =====
                       _HeaderRegister(bounce: _bounce),
 
                       const SizedBox(height: 10),
 
-                      // ===== Card đăng ký (không tràn, tự compact) =====
                       Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 460),
@@ -167,7 +172,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    // tiêu đề card
                                     const Text(
                                       'Tạo tài khoản',
                                       textAlign: TextAlign.center,
@@ -213,8 +217,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       obscureText: !showPass,
                                       decoration: InputDecoration(
                                         labelText: 'Mật khẩu (≥ 6 ký tự)',
-                                        prefixIcon:
-                                            const Icon(Icons.lock_outline),
+                                        prefixIcon: const Icon(Icons.lock_outline),
                                         border: const OutlineInputBorder(),
                                         isDense: true,
                                         suffixIcon: IconButton(
@@ -237,8 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       obscureText: !showConfirm,
                                       decoration: InputDecoration(
                                         labelText: 'Nhập lại mật khẩu',
-                                        prefixIcon:
-                                            const Icon(Icons.lock_outline),
+                                        prefixIcon: const Icon(Icons.lock_outline),
                                         border: const OutlineInputBorder(),
                                         isDense: true,
                                         suffixIcon: IconButton(
@@ -260,12 +262,10 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       height: compact ? 46 : 50,
                                       child: ElevatedButton(
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFF009688),
+                                          backgroundColor: const Color(0xFF009688),
                                           elevation: 0,
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(14),
+                                            borderRadius: BorderRadius.circular(14),
                                           ),
                                         ),
                                         onPressed: loading ? null : _register,
@@ -273,8 +273,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                             ? const SizedBox(
                                                 width: 22,
                                                 height: 22,
-                                                child:
-                                                    CircularProgressIndicator(
+                                                child: CircularProgressIndicator(
                                                   strokeWidth: 2,
                                                   color: Colors.white,
                                                 ),
@@ -282,8 +281,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                             : const Text(
                                                 'Đăng ký',
                                                 style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold,
+                                                    fontWeight: FontWeight.bold,
                                                     fontSize: 16),
                                               ),
                                       ),
@@ -293,8 +291,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     // Đã có tài khoản?
                                     TextButton(
                                       onPressed: () => Navigator.pop(context),
-                                      child: const Text(
-                                          'Đã có tài khoản? Đăng nhập'),
+                                      child: const Text('Đã có tài khoản? Đăng nhập'),
                                     ),
                                   ],
                                 ),
@@ -317,7 +314,6 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 }
 
-/// ===== Header đồng hồ cát + 2 dòng chữ =====
 class _HeaderRegister extends StatelessWidget {
   final Animation<double> bounce;
   const _HeaderRegister({required this.bounce});
@@ -373,7 +369,6 @@ class _HeaderRegister extends StatelessWidget {
   }
 }
 
-/// ===== Bubble layer dùng chung =====
 class _BubblesLayer extends StatelessWidget {
   const _BubblesLayer();
 

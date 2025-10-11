@@ -1,10 +1,14 @@
-// lib/screens/login_screen.dart
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'register_screen.dart';
+import './register_screen.dart';
+
+
+// ➕ bổ sung để đảm bảo có hồ sơ người dùng
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/user_meta_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -48,43 +52,49 @@ class _LoginScreenState extends State<LoginScreen>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   Future<void> _signInEmail() async {
-  if (!formKey.currentState!.validate()) return;
-  setState(() => loading = true);
-  try {
-    await FirebaseAuth.instance.signInWithEmailAndPassword(
-      email: emailC.text.trim(),
-      password: passC.text.trim(),
-    );
-} on FirebaseAuthException catch (e) {
-  // In ra mã lỗi để kiểm tra nếu cần
-  debugPrint('FirebaseAuth error: ${e.code}');
+    if (!formKey.currentState!.validate()) return;
+    setState(() => loading = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailC.text.trim(),
+        password: passC.text.trim(),
+      );
 
-  final code = e.code.toLowerCase();
-  String msg;
-
-  if (code == 'user-not-found' ||
-      code == 'wrong-password' ||
-      code == 'invalid-credential' ||              // Firebase mới dùng mã này
-      code == 'invalid-login-credentials') {       // đôi khi trả về mã này
-    msg = 'Email hoặc mật khẩu không đúng';
-  } else if (code == 'invalid-email') {
-    msg = 'Email không hợp lệ';
-  } else if (code == 'user-disabled') {
-    msg = 'Tài khoản này đã bị vô hiệu hóa';
-  } else if (code == 'too-many-requests') {
-    msg = 'Bạn đã thử quá nhiều lần, vui lòng thử lại sau';
-  } else if (code == 'network-request-failed') {
-    msg = 'Không có kết nối mạng, vui lòng kiểm tra lại';
-  } else {
-    msg = 'Đăng nhập thất bại, vui lòng thử lại';
+      // ➕ đảm bảo có hồ sơ users/{uid}
+      final u = FirebaseAuth.instance.currentUser;
+      if (u != null) {
+        await UserMetaService().ensureNewUserDoc(
+          u.uid,
+          email: u.email,
+          displayName: u.displayName,
+          photoURL: u.photoURL,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuth error: ${e.code}');
+      final code = e.code.toLowerCase();
+      String msg;
+      if (code == 'user-not-found' ||
+          code == 'wrong-password' ||
+          code == 'invalid-credential' ||
+          code == 'invalid-login-credentials') {
+        msg = 'Email hoặc mật khẩu không đúng';
+      } else if (code == 'invalid-email') {
+        msg = 'Email không hợp lệ';
+      } else if (code == 'user-disabled') {
+        msg = 'Tài khoản này đã bị vô hiệu hóa';
+      } else if (code == 'too-many-requests') {
+        msg = 'Bạn đã thử quá nhiều lần, vui lòng thử lại sau';
+      } else if (code == 'network-request-failed') {
+        msg = 'Không có kết nối mạng, vui lòng kiểm tra lại';
+      } else {
+        msg = 'Đăng nhập thất bại, vui lòng thử lại';
+      }
+      _toast(msg);
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
-
-  _toast(msg);
-}
- finally {
-    if (mounted) setState(() => loading = false);
-  }
-}
 
   Future<void> _signInGoogle() async {
     setState(() => loading = true);
@@ -101,7 +111,18 @@ class _LoginScreenState extends State<LoginScreen>
         idToken: tok.idToken,
         accessToken: tok.accessToken,
       );
-      await FirebaseAuth.instance.signInWithCredential(cred);
+      final res = await FirebaseAuth.instance.signInWithCredential(cred);
+
+      // ➕ đảm bảo có hồ sơ users/{uid}
+      final fu = res.user;
+      if (fu != null) {
+        await UserMetaService().ensureNewUserDoc(
+          fu.uid,
+          email: fu.email,
+          displayName: fu.displayName,
+          photoURL: fu.photoURL,
+        );
+      }
     } on FirebaseAuthException catch (e) {
       _toast(e.message ?? 'Không thể đăng nhập bằng Google');
     } catch (e) {
@@ -132,11 +153,10 @@ class _LoginScreenState extends State<LoginScreen>
       animation: _ac,
       builder: (context, _) {
         return Scaffold(
-          // Không scroll, không đẩy khi bật bàn phím
           resizeToAvoidBottomInset: false,
           body: Stack(
             children: [
-              // ===== BG gradient động + bubble =====
+              // BG gradient động + bubble
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
@@ -156,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen>
               Positioned.fill(child: Container(color: Colors.white.withOpacity(.12))),
               Positioned.fill(child: _Bubbles(ac: _ac)),
 
-              // ===== Nội dung cố định =====
+              // Nội dung
               SafeArea(
                 child: Padding(
                   padding: EdgeInsets.only(
@@ -170,7 +190,6 @@ class _LoginScreenState extends State<LoginScreen>
                       _Header(ac: _hourglassBounce),
                       const SizedBox(height: 10),
 
-                      // Card gói toàn bộ (có cả "Quên mật khẩu?")
                       Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 460),
@@ -181,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                             child: Padding(
                               padding: EdgeInsets.fromLTRB(
-                                18, // padding nén hơn để tránh tràn
+                                18,
                                 compact ? 16 : 22,
                                 18,
                                 compact ? 12 : 16,
@@ -242,7 +261,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           (v ?? '').length < 6 ? 'Mật khẩu tối thiểu 6 ký tự' : null,
                                     ),
 
-                                    // Quên mật khẩu (nằm TRONG Card)
+                                    // Quên mật khẩu
                                     Align(
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
@@ -345,7 +364,6 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
 
-                      // chêm khoảng dưới một chút cho an toàn
                       SizedBox(height: compact ? 8 : 12),
                     ],
                   ),
