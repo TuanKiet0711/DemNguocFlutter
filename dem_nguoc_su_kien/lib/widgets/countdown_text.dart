@@ -256,7 +256,7 @@ class _CountdownTextState extends State<CountdownText>
     final s = _diff.inSeconds % 60;
 
     return Text(
-      'Còn lại $d ngày $h giờ $m phút $s giây',
+      ' $d ngày $h giờ $m phút $s giây',
       style: widget.style ??
           const TextStyle(
             fontWeight: FontWeight.w700,
