@@ -96,41 +96,41 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  Future<void> _signInGoogle() async {
-    setState(() => loading = true);
-    try {
-      final g = GoogleSignIn();
-      await g.signOut(); // luôn mở picker tài khoản
-      final u = await g.signIn();
-      if (u == null) {
-        setState(() => loading = false);
-        return;
-      }
-      final tok = await u.authentication;
-      final cred = GoogleAuthProvider.credential(
-        idToken: tok.idToken,
-        accessToken: tok.accessToken,
-      );
-      final res = await FirebaseAuth.instance.signInWithCredential(cred);
+  // Future<void> _signInGoogle() async {
+  //   setState(() => loading = true);
+  //   try {
+  //     final g = GoogleSignIn();
+  //     await g.signOut(); // luôn mở picker tài khoản
+  //     final u = await g.signIn();
+  //     if (u == null) {
+  //       setState(() => loading = false);
+  //       return;
+  //     }
+  //     final tok = await u.authentication;
+  //     final cred = GoogleAuthProvider.credential(
+  //       idToken: tok.idToken,
+  //       accessToken: tok.accessToken,
+  //     );
+  //     final res = await FirebaseAuth.instance.signInWithCredential(cred);
 
-      // ➕ đảm bảo có hồ sơ users/{uid}
-      final fu = res.user;
-      if (fu != null) {
-        await UserMetaService().ensureNewUserDoc(
-          fu.uid,
-          email: fu.email,
-          displayName: fu.displayName,
-          photoURL: fu.photoURL,
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      _toast(e.message ?? 'Không thể đăng nhập bằng Google');
-    } catch (e) {
-      _toast('Lỗi: $e');
-    } finally {
-      if (mounted) setState(() => loading = false);
-    }
-  }
+  //     //  đảm bảo có hồ sơ users/{uid}
+  //     final fu = res.user;
+  //     if (fu != null) {
+  //       await UserMetaService().ensureNewUserDoc(
+  //         fu.uid,
+  //         email: fu.email,
+  //         displayName: fu.displayName,
+  //         photoURL: fu.photoURL,
+  //       );
+  //     }
+  //   } on FirebaseAuthException catch (e) {
+  //     _toast(e.message ?? 'Không thể đăng nhập bằng Google');
+  //   } catch (e) {
+  //     _toast('Lỗi: $e');
+  //   } finally {
+  //     if (mounted) setState(() => loading = false);
+  //   }
+  // }
 
   Future<void> _forgotPassword() async {
     final email = emailC.text.trim();
@@ -326,36 +326,36 @@ class _LoginScreenState extends State<LoginScreen>
                                     SizedBox(height: compact ? 10 : 12),
 
                                     // Divider
-                                    Row(
-                                      children: const [
-                                        Expanded(child: Divider()),
-                                        Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                                          child: Text('hoặc'),
-                                        ),
-                                        Expanded(child: Divider()),
-                                      ],
-                                    ),
+                                    // Row(
+                                    //   children: const [
+                                    //     Expanded(child: Divider()),
+                                    //     Padding(
+                                    //       padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                    //       child: Text('hoặc'),
+                                    //     ),
+                                    //     Expanded(child: Divider()),
+                                    //   ],
+                                    // ),
 
-                                    SizedBox(height: compact ? 10 : 12),
+                                    // SizedBox(height: compact ? 10 : 12),
 
-                                    // Google
-                                    SizedBox(
-                                      height: compact ? 46 : 50,
-                                      child: OutlinedButton.icon(
-                                        style: OutlinedButton.styleFrom(
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(14),
-                                          ),
-                                        ),
-                                        onPressed: loading ? null : _signInGoogle,
-                                        icon: const Icon(Icons.g_mobiledata, size: 26),
-                                        label: const Text(
-                                          'Đăng nhập bằng Google',
-                                          style: TextStyle(fontWeight: FontWeight.w600),
-                                        ),
-                                      ),
-                                    ),
+                                    // // Google
+                                    // SizedBox(
+                                    //   height: compact ? 46 : 50,
+                                    //   child: OutlinedButton.icon(
+                                    //     style: OutlinedButton.styleFrom(
+                                    //       shape: RoundedRectangleBorder(
+                                    //         borderRadius: BorderRadius.circular(14),
+                                    //       ),
+                                    //     ),
+                                    //     onPressed: loading ? null : _signInGoogle,
+                                    //     icon: const Icon(Icons.g_mobiledata, size: 26),
+                                    //     label: const Text(
+                                    //       'Đăng nhập bằng Google',
+                                    //       style: TextStyle(fontWeight: FontWeight.w600),
+                                    //     ),
+                                    //   ),
+                                    // ),
                                   ],
                                 ),
                               ),

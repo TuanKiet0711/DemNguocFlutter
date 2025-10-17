@@ -1,0 +1,28 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "dem_nguoc_su_kien",
+            "cwd": "dem_nguoc_su_kien",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "dem_nguoc_su_kien (profile mode)",
+            "cwd": "dem_nguoc_su_kien",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "dem_nguoc_su_kien (release mode)",
+            "cwd": "dem_nguoc_su_kien",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}
