@@ -1,13 +1,8 @@
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+
 import './register_screen.dart';
-
-
-// ➕ bổ sung để đảm bảo có hồ sơ người dùng
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/user_meta_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -112,8 +107,6 @@ class _LoginScreenState extends State<LoginScreen>
   //       accessToken: tok.accessToken,
   //     );
   //     final res = await FirebaseAuth.instance.signInWithCredential(cred);
-
-  //     //  đảm bảo có hồ sơ users/{uid}
   //     final fu = res.user;
   //     if (fu != null) {
   //       await UserMetaService().ensureNewUserDoc(
@@ -173,7 +166,9 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ),
               ),
-              Positioned.fill(child: Container(color: Colors.white.withOpacity(.12))),
+              Positioned.fill(
+                child: Container(color: Colors.white.withValues(alpha: .12)),
+              ),
               Positioned.fill(child: _Bubbles(ac: _ac)),
 
               // Nội dung
@@ -325,37 +320,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                                     SizedBox(height: compact ? 10 : 12),
 
-                                    // Divider
-                                    // Row(
-                                    //   children: const [
-                                    //     Expanded(child: Divider()),
-                                    //     Padding(
-                                    //       padding: EdgeInsets.symmetric(horizontal: 8.0),
-                                    //       child: Text('hoặc'),
-                                    //     ),
-                                    //     Expanded(child: Divider()),
-                                    //   ],
-                                    // ),
-
-                                    // SizedBox(height: compact ? 10 : 12),
-
-                                    // // Google
-                                    // SizedBox(
-                                    //   height: compact ? 46 : 50,
-                                    //   child: OutlinedButton.icon(
-                                    //     style: OutlinedButton.styleFrom(
-                                    //       shape: RoundedRectangleBorder(
-                                    //         borderRadius: BorderRadius.circular(14),
-                                    //       ),
-                                    //     ),
-                                    //     onPressed: loading ? null : _signInGoogle,
-                                    //     icon: const Icon(Icons.g_mobiledata, size: 26),
-                                    //     label: const Text(
-                                    //       'Đăng nhập bằng Google',
-                                    //       style: TextStyle(fontWeight: FontWeight.w600),
-                                    //     ),
-                                    //   ),
-                                    // ),
+                                    // (Google Sign-In UI hiện đang tắt)
                                   ],
                                 ),
                               ),
@@ -390,11 +355,11 @@ class _Header extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.22),
+                color: Colors.white.withValues(alpha: .22),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(.08),
+                    color: Colors.black.withValues(alpha: .08),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -411,7 +376,7 @@ class _Header extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Luôn đúng hẹn với mục tiêu của bạn',
-              style: TextStyle(color: Colors.white.withOpacity(.9), fontSize: 13.5),
+              style: TextStyle(color: Colors.white.withValues(alpha: .9), fontSize: 13.5),
             ),
           ],
         );
@@ -446,7 +411,7 @@ class _BubblesPainter extends CustomPainter {
     for (int i = 0; i < 16; i++) {
       final p = _bubblePos(size, i, t);
       final r = 6.0 + (i % 5) * 3.0;
-      paint.color = Colors.white.withOpacity(.10 + (i % 4) * .05);
+      paint.color = Colors.white.withValues(alpha: .10 + (i % 4) * .05);
       canvas.drawCircle(p, r, paint);
     }
   }

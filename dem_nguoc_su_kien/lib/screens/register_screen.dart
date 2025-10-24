@@ -1,10 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart'; // debugPrint
 
-// ➕ bổ sung để tạo hồ sơ người dùng
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Không cần import foundation.dart / cloud_firestore.dart
 import '../services/user_meta_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -76,6 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       Navigator.pop(context);
       _toast('Đăng ký thành công!');
     } on FirebaseAuthException catch (e) {
+      // debugPrint nằm trong material.dart (đã export), không cần foundation.dart
       debugPrint('FirebaseAuth register error: ${e.code} — ${e.message}');
       final code = e.code.toLowerCase();
       String msg;
@@ -120,17 +119,25 @@ class _RegisterScreenState extends State<RegisterScreen>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Color.lerp(const Color(0xFF20B2AA),
-                                const Color(0xFF009688), _bgShift.value)!
-                            .withOpacity(.98),
-                        Color.lerp(const Color(0xFF009688),
-                            const Color(0xFF26A69A), _bgShift.value)!,
+                        Color.lerp(
+                          const Color(0xFF20B2AA),
+                          const Color(0xFF009688),
+                          _bgShift.value,
+                        )!
+                            .withValues(alpha: .98),
+                        Color.lerp(
+                          const Color(0xFF009688),
+                          const Color(0xFF26A69A),
+                          _bgShift.value,
+                        )!,
                       ],
                     ),
                   ),
                 ),
               ),
-              Positioned.fill(child: Container(color: Colors.white.withOpacity(.12))),
+              Positioned.fill(
+                child: Container(color: Colors.white.withValues(alpha: .12)),
+              ),
               Positioned.fill(child: const _BubblesLayer()),
 
               // Nội dung
@@ -143,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         children: [
                           IconButton(
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(.25),
+                              backgroundColor: Colors.white.withValues(alpha: .25),
                             ),
                             icon: const Icon(Icons.arrow_back, color: Colors.white),
                             onPressed: () => Navigator.pop(context),
@@ -162,10 +169,15 @@ class _RegisterScreenState extends State<RegisterScreen>
                           child: Card(
                             elevation: 12,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(22)),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
                             child: Padding(
                               padding: EdgeInsets.fromLTRB(
-                                  18, compact ? 16 : 22, 18, compact ? 16 : 20),
+                                18,
+                                compact ? 16 : 22,
+                                18,
+                                compact ? 16 : 20,
+                              ),
                               child: Form(
                                 key: formKey,
                                 child: Column(
@@ -176,16 +188,18 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       'Tạo tài khoản',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800),
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
                                       'Điền thông tin để bắt đầu đếm ngược!',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                          color: Colors.black.withOpacity(.65),
-                                          fontWeight: FontWeight.w600),
+                                        color: Colors.black.withValues(alpha: .65),
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                     const SizedBox(height: 16),
 
@@ -202,8 +216,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       validator: (v) {
                                         v = (v ?? '').trim();
                                         if (v.isEmpty) return 'Nhập email';
-                                        final ok = RegExp(
-                                                r'^[^@]+@[^@]+\.[^@]+$')
+                                        final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+$')
                                             .hasMatch(v);
                                         if (!ok) return 'Email không hợp lệ';
                                         return null;
@@ -222,10 +235,13 @@ class _RegisterScreenState extends State<RegisterScreen>
                                         isDense: true,
                                         suffixIcon: IconButton(
                                           onPressed: () => setState(
-                                              () => showPass = !showPass),
-                                          icon: Icon(showPass
-                                              ? Icons.visibility_off
-                                              : Icons.visibility),
+                                            () => showPass = !showPass,
+                                          ),
+                                          icon: Icon(
+                                            showPass
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                          ),
                                         ),
                                       ),
                                       validator: (v) => (v ?? '').length < 6
@@ -245,15 +261,17 @@ class _RegisterScreenState extends State<RegisterScreen>
                                         isDense: true,
                                         suffixIcon: IconButton(
                                           onPressed: () => setState(
-                                              () => showConfirm = !showConfirm),
-                                          icon: Icon(showConfirm
-                                              ? Icons.visibility_off
-                                              : Icons.visibility),
+                                            () => showConfirm = !showConfirm,
+                                          ),
+                                          icon: Icon(
+                                            showConfirm
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                          ),
                                         ),
                                       ),
-                                      validator: (v) => v != passC.text
-                                          ? 'Mật khẩu không khớp'
-                                          : null,
+                                      validator: (v) =>
+                                          v != passC.text ? 'Mật khẩu không khớp' : null,
                                     ),
                                     const SizedBox(height: 16),
 
@@ -281,8 +299,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                                             : const Text(
                                                 'Đăng ký',
                                                 style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
                                               ),
                                       ),
                                     ),
@@ -330,18 +349,21 @@ class _HeaderRegister extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(.22),
+                  color: Colors.white.withValues(alpha: .22),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(.08),
+                      color: Colors.black.withValues(alpha: .08),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.hourglass_top_rounded,
-                    size: 44, color: Colors.white),
+                child: const Icon(
+                  Icons.hourglass_top_rounded,
+                  size: 44,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 10),
               const Text(
@@ -357,7 +379,7 @@ class _HeaderRegister extends StatelessWidget {
               Text(
                 'Luôn đúng hẹn với mục tiêu của bạn',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(.9),
+                  color: Colors.white.withValues(alpha: .9),
                   fontSize: 13.5,
                 ),
               ),
@@ -402,7 +424,7 @@ class _BubblesPainter extends CustomPainter {
       final y = size.height * (0.8 - (time * speed + i * .07) % 1.0);
       final x = baseX + sin(time * 2 * pi * (.3 + i * .02)) * 20;
       final r = 6.0 + (i % 5) * 3.0;
-      paint.color = Colors.white.withOpacity(.10 + (i % 4) * .05);
+      paint.color = Colors.white.withValues(alpha: .10 + (i % 4) * .05);
       canvas.drawCircle(Offset(x, y), r, paint);
     }
   }

@@ -61,6 +61,9 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
     );
     if (d == null) return null;
 
+    // ✅ mounted check để không dùng context sau async gap
+    if (!mounted) return null;
+
     final t = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(init ?? now),
@@ -105,7 +108,7 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
         .doc(widget.suKien.id)
         .update(data);
 
-    if (!mounted) return;
+    if (!mounted) return; // ✅ guard sau await
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.saveChanges)));
   }
@@ -180,7 +183,7 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
                         ),
                         boxShadow: [
                           if (_mau == c)
-                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6),
+                            BoxShadow(color: Colors.black.withValues(alpha: .2), blurRadius: 6),
                         ],
                       ),
                     ),
@@ -243,7 +246,7 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
         title: Text(title),
         subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey)),
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
+          backgroundColor: color.withValues(alpha: .15),
           child: Icon(icon, color: color),
         ),
         trailing: const Icon(Icons.chevron_right, color: Colors.grey),

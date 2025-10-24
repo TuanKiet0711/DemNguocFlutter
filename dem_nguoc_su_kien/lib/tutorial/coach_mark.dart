@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class CoachStep {
@@ -103,11 +102,10 @@ class CoachMark {
                 height: targetSize.height + 8,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(step.radius),
-                  border:
-                      Border.all(color: Colors.white.withOpacity(.9), width: 2),
+                  border: Border.all(color: Colors.white.withValues(alpha: .9), width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(.25),
+                      color: Colors.black.withValues(alpha: .25),
                       blurRadius: 10,
                     ),
                   ],
@@ -173,7 +171,7 @@ class _HolePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bg = Paint()..color = Colors.black.withOpacity(.6);
+    final bg = Paint()..color = Colors.black.withValues(alpha: .6);
     canvas.drawRect(Offset.zero & size, bg);
 
     final clear = Paint()
@@ -228,7 +226,7 @@ class _TipCard extends StatelessWidget {
               Text(
                 body,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black.withOpacity(.8)),
+                style: TextStyle(color: Colors.black.withValues(alpha: .8)),
               ),
               const SizedBox(height: 10),
               Row(

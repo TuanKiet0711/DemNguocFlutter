@@ -360,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(.15),
+                          color: color.withValues(alpha: .15),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -378,7 +378,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 height: 54,
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: [color.withOpacity(.8), color.withOpacity(.4)],
+                                    colors: [
+                                      color.withValues(alpha: .8),
+                                      color.withValues(alpha: .4)
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
@@ -425,10 +428,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
-                              color: color.withOpacity(.08),
+                              color: color.withValues(alpha: .08),
                               borderRadius: BorderRadius.circular(12),
                               border:
-                                  Border.all(color: color.withOpacity(.25)),
+                                  Border.all(color: color.withValues(alpha: .25)),
                             ),
                             child: Center(
                               child: isPast

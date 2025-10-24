@@ -49,6 +49,9 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
     );
     if (d == null) return null;
 
+    // ✅ Guard để không dùng BuildContext sau async gap khi widget đã dispose
+    if (!mounted) return null;
+
     final t = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(init ?? now),
@@ -168,7 +171,7 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                         ),
                         boxShadow: [
                           if (_mau == c)
-                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6),
+                            BoxShadow(color: Colors.black.withValues(alpha: .2), blurRadius: 6),
                         ],
                       ),
                     ),
@@ -231,7 +234,7 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
         title: Text(title),
         subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey)),
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
+          backgroundColor: color.withValues(alpha: .15),
           child: Icon(icon, color: color),
         ),
         trailing: const Icon(Icons.chevron_right, color: Colors.grey),

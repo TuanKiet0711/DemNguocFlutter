@@ -121,7 +121,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.white.withOpacity(.22),
+                                  color: Colors.white.withValues(alpha: .22),
                                 ),
                                 child: const Icon(Icons.hourglass_top_rounded,
                                     color: Colors.white, size: 24),
@@ -204,7 +204,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 value: (_index + 1) / 3,
                                 minHeight: 8,
                                 color: Colors.white,
-                                backgroundColor: Colors.white.withOpacity(.25),
+                                backgroundColor: Colors.white.withValues(alpha: .25),
                               ),
                             ),
                           ),
@@ -281,7 +281,7 @@ class _AnimatedGradient extends StatelessWidget {
           colors: [c1, c2, c3],
         ),
       ),
-      child: Container(color: Colors.white.withOpacity(.06)),
+      child: Container(color: Colors.white.withValues(alpha: .06)),
     );
   }
 }
@@ -336,7 +336,7 @@ class _DotsPainter extends CustomPainter {
     for (int i = 0; i < 18; i++) {
       final p = _pos(size, i, t);
       final r = 5.0 + (i % 5) * 2.5;
-      paint.color = Colors.white.withOpacity(.08 + (i % 4) * .05);
+      paint.color = Colors.white.withValues(alpha: .08 + (i % 4) * .05);
       canvas.drawCircle(p, r, paint);
     }
   }
@@ -422,7 +422,7 @@ class _ParallaxCard extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: accent.withOpacity(.25),
+                  color: accent.withValues(alpha: .25),
                   blurRadius: 60,
                   spreadRadius: 10,
                 ),
@@ -433,11 +433,11 @@ class _ParallaxCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.92),
+            color: Colors.white.withValues(alpha: .92),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: accent.withOpacity(.18),
+                color: accent.withValues(alpha: .18),
                 blurRadius: 20,
                 offset: const Offset(0, 12),
               ),
@@ -449,7 +449,7 @@ class _ParallaxCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(.12),
+                  color: accent.withValues(alpha: .12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 54, color: accent),
@@ -466,7 +466,7 @@ class _ParallaxCard extends StatelessWidget {
                 desc,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.black.withOpacity(.65),
+                  color: Colors.black.withValues(alpha: .65),
                   fontSize: 14.5,
                   height: 1.35,
                 ),
@@ -483,8 +483,8 @@ class _ParallaxCard extends StatelessWidget {
                               t,
                               style: const TextStyle(fontWeight: FontWeight.w700),
                             ),
-                            backgroundColor: accent.withOpacity(.08),
-                            side: BorderSide(color: accent.withOpacity(.28)),
+                            backgroundColor: accent.withValues(alpha: .08),
+                            side: BorderSide(color: accent.withValues(alpha: .28)),
                           ))
                       .toList(),
                 ),
@@ -536,7 +536,7 @@ class _PermissionPage extends StatelessWidget {
                     height: 140,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: accent.withOpacity(.10),
+                      color: accent.withValues(alpha: .10),
                     ),
                   ),
                   Container(
@@ -544,7 +544,7 @@ class _PermissionPage extends StatelessWidget {
                     height: 92,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: accent.withOpacity(.16),
+                      color: accent.withValues(alpha: .16),
                     ),
                   ),
                   Icon(icon, size: 62, color: Colors.white),
@@ -562,7 +562,7 @@ class _PermissionPage extends StatelessWidget {
                 desc,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(.93),
+                  color: Colors.white.withValues(alpha: .93),
                   fontSize: 14.5,
                   height: 1.35,
                 ),
@@ -624,7 +624,7 @@ class _Dots extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: active
                 ? Border.all(color: Colors.white, width: 0)
-                : Border.all(color: Colors.white.withOpacity(.45), width: 1),
+                : Border.all(color: Colors.white.withValues(alpha: .45), width: 1),
           ),
         );
       }),

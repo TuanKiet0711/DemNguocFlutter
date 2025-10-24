@@ -62,7 +62,6 @@ class _CountdownTextState extends State<CountdownText>
       duration: const Duration(seconds: 2),
     );
 
-    // ❗ Trì hoãn đến sau frame đầu để Overlay sẵn sàng
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _recompute(force: true);
     });
@@ -70,11 +69,9 @@ class _CountdownTextState extends State<CountdownText>
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _recompute());
   }
 
-  // 👉 Bắt sự kiện khi app resume (mở lại từ nền)
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Khi mở lại app, cập nhật lại thời gian chính xác
       _recompute(force: true);
     }
   }
@@ -83,7 +80,6 @@ class _CountdownTextState extends State<CountdownText>
     if (_finished) return;
     _finished = true;
 
-    // ❗ Chèn overlay + play confetti sau frame kế tiếp để chắc chắn có Overlay
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showGlobalConfetti();
       _confetti.play();
@@ -94,7 +90,7 @@ class _CountdownTextState extends State<CountdownText>
         DateTime.now().millisecondsSinceEpoch & 0x7fffffff,
         widget.doneText,
         'Sự kiện của bạn đã đến!',
-        NotificationDetails(
+        NotificationDetails( // ✅ bỏ const ở đây
           android: AndroidNotificationDetails(
             kEventChannel.id,
             kEventChannel.name,
@@ -110,7 +106,6 @@ class _CountdownTextState extends State<CountdownText>
       );
     }
 
-    // 6s sau thì fade-out confetti, 9s thì tháo overlay (dư 1s để chắc chắn)
     Future.delayed(const Duration(seconds: 6), () {
       if (mounted) _fadeOutAC.forward();
     });
@@ -120,10 +115,9 @@ class _CountdownTextState extends State<CountdownText>
   void _showGlobalConfetti() {
     _removeGlobalConfetti();
 
-    // ❗ Phòng trường hợp Overlay.of(context) null
     final overlayState =
         Overlay.maybeOf(context, rootOverlay: true) ?? Navigator.of(context).overlay;
-    if (overlayState == null) return; // Không có overlay => thoát an toàn
+    if (overlayState == null) return;
 
     _confettiOverlay = OverlayEntry(
       builder: (_) => Positioned.fill(
@@ -164,7 +158,6 @@ class _CountdownTextState extends State<CountdownText>
     final next = widget.target.difference(now);
     if (!mounted) return;
 
-    // Nếu force = true (mở lại app), cho phép cập nhật và tái trigger hiệu ứng nếu cần
     if (force || next.inSeconds != _diff.inSeconds) {
       setState(() => _diff = next);
       if (next.inSeconds <= 0) {
@@ -178,7 +171,7 @@ class _CountdownTextState extends State<CountdownText>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.target != widget.target) {
       _finished = false;
-      _fadeOutAC.reset(); // reset lại fade-out phòng khi đổi target sau khi bắn xong
+      _fadeOutAC.reset();
       _recompute(force: true);
     }
   }
@@ -219,11 +212,11 @@ class _CountdownTextState extends State<CountdownText>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.18),
+                color: Colors.white.withValues(alpha: .18),
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.teal.withOpacity(0.35),
+                    color: Colors.teal.withValues(alpha: .35),
                     blurRadius: 14,
                     spreadRadius: 1.5,
                   ),
