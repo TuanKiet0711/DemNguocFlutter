@@ -23,7 +23,8 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
   int _mau = 0xFF4CAF50;
 
   String _fmt(DateTime d) =>
-      DateFormat('HH:mm dd/MM/yyyy', LanguageController.I.locale.languageCode).format(d);
+      DateFormat('HH:mm dd/MM/yyyy', LanguageController.I.locale.languageCode)
+          .format(d);
 
   Future<DateTime?> _pickDateTime(DateTime? init, AppLoc loc) async {
     final now = DateTime.now();
@@ -41,7 +42,9 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
           context: context,
           locale: LanguageController.I.locale,
           child: Theme(
-            data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.teal)),
+            data: ThemeData(
+              colorScheme: const ColorScheme.light(primary: Colors.teal),
+            ),
             child: child!,
           ),
         );
@@ -49,7 +52,6 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
     );
     if (d == null) return null;
 
-    // ✅ Guard để không dùng BuildContext sau async gap khi widget đã dispose
     if (!mounted) return null;
 
     final t = await showTimePicker(
@@ -63,7 +65,9 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
           context: context,
           locale: LanguageController.I.locale,
           child: Theme(
-            data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.teal)),
+            data: ThemeData(
+              colorScheme: const ColorScheme.light(primary: Colors.teal),
+            ),
             child: child!,
           ),
         );
@@ -76,13 +80,16 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
 
   Future<void> _luu(AppLoc loc) async {
     if (!_frm.currentState!.validate()) return;
+
     if (_thoiDiem == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.pleasePickTime)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(loc.pleasePickTime)));
       return;
     }
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
+    // 👇 CHỈ TẠO 1 OBJECT – KHÔNG LÃNG PHÍ BIẾN
     final e = SuKien(
       id: 'auto',
       tieuDe: _tieuDe.text.trim(),
@@ -92,11 +99,14 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
       nguoiTao: uid,
     );
 
+    // 👇 SỬ DỤNG BIẾN e – KHÔNG CÒN BÁO unused_local_variable
     await _svc.them(e);
+
 
     if (!mounted) return;
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.saveEvent)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(loc.saveEvent)));
   }
 
   @override
@@ -115,7 +125,8 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
       appBar: AppBar(
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
-        title: Text(loc.addEvent, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(loc.addEvent,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 3,
       ),
@@ -132,9 +143,11 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                 prefixIcon: const Icon(Icons.title, color: Colors.teal),
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? loc.eventTitle : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? loc.eventTitle : null,
             ),
             const SizedBox(height: 14),
 
@@ -148,14 +161,23 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                 if (r != null) setState(() => _thoiDiem = r);
               },
             ),
+
             const SizedBox(height: 10),
 
-            Text(loc.pickColor, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(loc.pickColor,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
+
             Wrap(
               spacing: 10,
               children: [
-                for (final c in [0xFF4CAF50, 0xFFF44336, 0xFF2196F3, 0xFFFFC107, 0xFF9C27B0])
+                for (final c in [
+                  0xFF4CAF50,
+                  0xFFF44336,
+                  0xFF2196F3,
+                  0xFFFFC107,
+                  0xFF9C27B0
+                ])
                   GestureDetector(
                     onTap: () => setState(() => _mau = c),
                     child: AnimatedContainer(
@@ -169,15 +191,12 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                           color: _mau == c ? Colors.black : Colors.transparent,
                           width: 2.5,
                         ),
-                        boxShadow: [
-                          if (_mau == c)
-                            BoxShadow(color: Colors.black.withValues(alpha: .2), blurRadius: 6),
-                        ],
                       ),
                     ),
                   ),
               ],
             ),
+
             const SizedBox(height: 14),
 
             TextField(
@@ -188,9 +207,11 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                 prefixIcon: const Icon(Icons.notes, color: Colors.teal),
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
+
             const SizedBox(height: 24),
 
             SizedBox(
@@ -200,13 +221,15 @@ class _ThemSuKienScreenState extends State<ThemSuKienScreen> {
                 icon: const Icon(Icons.save),
                 label: Text(
                   loc.saveEvent,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                   elevation: 3,
                 ),
               ),

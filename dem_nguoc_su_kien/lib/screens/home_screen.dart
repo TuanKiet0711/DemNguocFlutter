@@ -333,8 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               if (data.isEmpty) {
                 return Center(
-                  child: Text(loc.noEvents,
-                      style: const TextStyle(fontSize: 16)),
+                  child: Text(loc.noEvents, style: const TextStyle(fontSize: 16)),
                 );
               }
 
@@ -380,7 +379,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   gradient: LinearGradient(
                                     colors: [
                                       color.withValues(alpha: .8),
-                                      color.withValues(alpha: .4)
+                                      color.withValues(alpha: .4),
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
@@ -394,20 +393,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(e.tieuDe,
-                                        style: const TextStyle(
-                                            fontSize: 19,
-                                            fontWeight: FontWeight.w800)),
+                                    Text(
+                                      e.tieuDe,
+                                      style: const TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
                                     const SizedBox(height: 3),
                                     Row(
                                       children: [
                                         const Icon(Icons.access_time,
                                             size: 16, color: Colors.black54),
                                         const SizedBox(width: 4),
-                                        Text(time,
-                                            style: const TextStyle(
-                                                fontSize: 13.5,
-                                                color: Colors.black54)),
+                                        Text(
+                                          time,
+                                          style: const TextStyle(
+                                            fontSize: 13.5,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ],
@@ -418,41 +423,47 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (e.ghiChu?.isNotEmpty == true)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
-                              child: Text('📝 ${e.ghiChu}',
-                                  style: const TextStyle(
-                                      fontSize: 13.5, color: Colors.black54)),
+                              child: Text(
+                                '📝 ${e.ghiChu}',
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  color: Colors.black54,
+                                ),
+                              ),
                             ),
                           const SizedBox(height: 10),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: .08),
                               borderRadius: BorderRadius.circular(12),
-                              border:
-                                  Border.all(color: color.withValues(alpha: .25)),
+                              border: Border.all(color: color.withValues(alpha: .25)),
                             ),
                             child: Center(
                               child: isPast
-                                  ? Text(loc.arrived,
+                                  ? Text(
+                                      loc.arrived,
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.teal,
-                                          fontSize: 16))
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.teal,
+                                        fontSize: 16,
+                                      ),
+                                    )
                                   : CountdownText(
                                       target: e.thoiDiem,
                                       style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: color.darken()),
-                                      doneText: loc.arrived),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: color.darken(),
+                                      ),
+                                      doneText: loc.arrived,
+                                    ),
                             ),
                           ),
                           const SizedBox(height: 10),
                           Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               KeyedSubtree(
                                 key: _kEdit,
@@ -461,67 +472,62 @@ class _HomeScreenState extends State<HomeScreen> {
                                     await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) =>
-                                            SuaSuKienScreen(suKien: e),
+                                        builder: (_) => SuaSuKienScreen(suKien: e),
                                       ),
                                     );
                                   },
-                                  icon: const Icon(Icons.edit,
-                                      color: Colors.teal),
-                                  label: Text(loc.edit,
-                                      style: const TextStyle(
-                                          color: Colors.teal,
-                                          fontWeight: FontWeight.w600)),
+                                  icon: const Icon(Icons.edit, color: Colors.teal),
+                                  label: Text(
+                                    loc.edit,
+                                    style: const TextStyle(
+                                      color: Colors.teal,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                               KeyedSubtree(
                                 key: _kDelete,
                                 child: TextButton.icon(
                                   onPressed: () async {
-                                    final confirm =
-                                        await showDialog<bool>(
+                                    final confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (_) => AlertDialog(
                                         title: Text(loc.deleteEvent),
-                                        content: Text(
-                                            loc.deleteConfirm(e.tieuDe)),
+                                        content: Text(loc.deleteConfirm(e.tieuDe)),
                                         actions: [
                                           TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(
-                                                      context, false),
-                                              child: Text(loc.cancel)),
+                                            onPressed: () => Navigator.pop(context, false),
+                                            child: Text(loc.cancel),
+                                          ),
                                           ElevatedButton(
-                                            onPressed: () =>
-                                                Navigator.pop(
-                                                    context, true),
-                                            style: ElevatedButton
-                                                .styleFrom(
-                                                    backgroundColor:
-                                                        Colors
-                                                            .redAccent),
+                                            onPressed: () => Navigator.pop(context, true),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.redAccent,
+                                            ),
                                             child: Text(loc.delete),
-                                          )
+                                          ),
                                         ],
                                       ),
                                     );
                                     if (confirm == true) {
+                                      // 🔥 chỉ truyền id vì xoa(String id)
                                       await _svc.xoa(e.id);
                                       if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(SnackBar(
-                                                content: Text(
-                                                    loc.deletedToast)));
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(loc.deletedToast)),
+                                        );
                                       }
                                     }
                                   },
-                                  icon: const Icon(Icons.delete,
-                                      color: Colors.red),
-                                  label: Text(loc.delete,
-                                      style: const TextStyle(
-                                          color: Colors.red,
-                                          fontWeight:
-                                              FontWeight.w600)),
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  label: Text(
+                                    loc.delete,
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],

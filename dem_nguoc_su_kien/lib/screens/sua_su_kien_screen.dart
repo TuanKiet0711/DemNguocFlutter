@@ -35,7 +35,8 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
   }
 
   String _fmt(DateTime d) =>
-      DateFormat('HH:mm dd/MM/yyyy', LanguageController.I.locale.languageCode).format(d);
+      DateFormat('HH:mm dd/MM/yyyy', LanguageController.I.locale.languageCode)
+          .format(d);
 
   Future<DateTime?> _pickDateTime(DateTime? init, AppLoc loc) async {
     final now = DateTime.now();
@@ -48,20 +49,8 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
       cancelText: loc.cancel,
       confirmText: loc.done,
       locale: LanguageController.I.locale,
-      builder: (context, child) {
-        return Localizations.override(
-          context: context,
-          locale: LanguageController.I.locale,
-          child: Theme(
-            data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.teal)),
-            child: child!,
-          ),
-        );
-      },
     );
     if (d == null) return null;
-
-    // ✅ mounted check để không dùng context sau async gap
     if (!mounted) return null;
 
     final t = await showTimePicker(
@@ -70,16 +59,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
       helpText: loc.pickTime,
       cancelText: loc.cancel,
       confirmText: loc.done,
-      builder: (context, child) {
-        return Localizations.override(
-          context: context,
-          locale: LanguageController.I.locale,
-          child: Theme(
-            data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.teal)),
-            child: child!,
-          ),
-        );
-      },
     );
     if (t == null) return null;
 
@@ -89,28 +68,29 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
   Future<void> _capNhat(AppLoc loc) async {
     if (!_frm.currentState!.validate()) return;
     if (_thoiDiem == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.pleasePickTime)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(loc.pleasePickTime)));
       return;
     }
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    final data = {
-      'tieuDe': _tieuDe.text.trim(),
-      'thoiDiem': Timestamp.fromDate(_thoiDiem!),
-      'mau': _mau,
-      'ghiChu': _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
-      'nguoiTao': uid,
-    };
-
     await FirebaseFirestore.instance
-        .collection('su_kien')
-        .doc(widget.suKien.id)
-        .update(data);
+    .collection('su_kien')
+    .doc(widget.suKien.id)
+    .update({
+  'tieuDe': _tieuDe.text.trim(),
+  'thoiDiem': Timestamp.fromDate(_thoiDiem!),
+  'mau': _mau,
+  'ghiChu': _ghiChu.text.trim().isEmpty ? null : _ghiChu.text.trim(),
+  'nguoiTao': uid,
+});
 
-    if (!mounted) return; // ✅ guard sau await
+
+    if (!mounted) return;
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.saveChanges)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(loc.saveChanges)));
   }
 
   @override
@@ -181,10 +161,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
                           color: _mau == c ? Colors.black : Colors.transparent,
                           width: 2.5,
                         ),
-                        boxShadow: [
-                          if (_mau == c)
-                            BoxShadow(color: Colors.black.withValues(alpha: .2), blurRadius: 6),
-                        ],
                       ),
                     ),
                   ),
@@ -219,7 +195,6 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 3,
                 ),
               ),
             ),
@@ -235,23 +210,21 @@ class _SuaSuKienScreenState extends State<SuaSuKienScreen> {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
-    VoidCallback? onLongPress,
   }) {
     return Material(
       elevation: 1.5,
       borderRadius: BorderRadius.circular(14),
       color: Colors.white,
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Text(title),
         subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey)),
         leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: .15),
+          backgroundColor: color.withValues(alpha: .15)
+,
           child: Icon(icon, color: color),
         ),
         trailing: const Icon(Icons.chevron_right, color: Colors.grey),
         onTap: onTap,
-        onLongPress: onLongPress,
       ),
     );
   }
