@@ -15,7 +15,7 @@ import 'them_su_kien_screen.dart';
 import 'sua_su_kien_screen.dart';
 import '../widgets/countdown_text.dart';
 
-// 👇 thêm 2 import cho tour
+// tour
 import '../tutorial/coach_mark.dart';
 import '../services/user_meta_service.dart';
 
@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _picker = ImagePicker();
   final _avatarImages = List.generate(8, (i) => 'assets/avatars/a${i + 1}.png');
 
-  // 👇 các key để highlight trong tour
+  // CoachMark keys
   final GlobalKey _kLang = GlobalKey();
   final GlobalKey _kAvatar = GlobalKey();
   final GlobalKey _kFab = GlobalKey();
@@ -100,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (cropped != null) await _saveAvatarChoice('file:${cropped.path}');
   }
 
-  // 👇 Tour hướng dẫn chính
+  // Tour chính
   Future<void> _startGuide() async {
     if (!mounted || _guideStarted) return;
     _guideStarted = true;
@@ -115,13 +115,13 @@ class _HomeScreenState extends State<HomeScreen> {
       CoachStep(
         key: _kAvatar,
         title: 'Hồ sơ & đăng xuất',
-        body: 'Chạm avatar để thay ảnh, chọn ảnh có sẵn, hoặc đăng xuất.',
+        body: 'Chạm avatar để thay ảnh, chọn avatar có sẵn hoặc đăng xuất.',
         align: Alignment.bottomCenter,
       ),
       CoachStep(
         key: _kFab,
-        title: 'Thêm sự kiện mới',
-        body: 'Bấm để tạo sự kiện và bắt đầu đếm ngược.',
+        title: 'Thêm sự kiện',
+        body: 'Bấm để tạo sự kiện mới.',
         align: Alignment.topCenter,
       ),
     ];
@@ -135,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // 👇 Tour hướng dẫn Sửa/Xóa
+  // Tour hướng dẫn Sửa / Xóa
   Future<void> _startGuideEditDelete() async {
     if (!mounted || _guideEditDeleteStarted) return;
     _guideEditDeleteStarted = true;
@@ -144,14 +144,12 @@ class _HomeScreenState extends State<HomeScreen> {
       CoachStep(
         key: _kEdit,
         title: 'Sửa sự kiện',
-        body: 'Bấm để chỉnh lại tiêu đề, thời điểm hoặc ghi chú sự kiện.',
-        align: Alignment.bottomCenter,
+        body: 'Bấm để chỉnh sửa tiêu đề, thời điểm, ghi chú.',
       ),
       CoachStep(
         key: _kDelete,
         title: 'Xóa sự kiện',
-        body: 'Nếu không cần nữa, bạn có thể xóa sự kiện tại đây.',
-        align: Alignment.topCenter,
+        body: 'Bấm để xóa sự kiện.',
       ),
     ];
 
@@ -164,11 +162,75 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ===== NÚT SỬA =====
+  Widget _buildEditButton(SuKien e, AppLoc loc) {
+    return TextButton.icon(
+      onPressed: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SuaSuKienScreen(suKien: e),
+          ),
+        );
+      },
+      icon: const Icon(Icons.edit, color: Colors.teal),
+      label: Text(
+        loc.edit,
+        style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  // ===== NÚT XÓA =====
+  Widget _buildDeleteButton(SuKien e, AppLoc loc) {
+    return TextButton.icon(
+      onPressed: () async {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text(loc.deleteEvent),
+            content: Text(loc.deleteConfirm(e.tieuDe)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(loc.cancel),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                ),
+                child: Text(loc.delete),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm == true) {
+  await _svc.xoa(e.id);
+  if (!mounted) return;                        // <-- FIX
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(loc.deletedToast)),
+  );
+}
+
+      },
+      icon: const Icon(Icons.delete, color: Colors.red),
+      label: Text(
+        loc.delete,
+        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  // Avatar hiển thị
   Widget _avatarWidget(User user) {
     if (_avatarPath != null && _avatarPath!.isNotEmpty) {
       if (_avatarPath!.startsWith('file:')) {
         final f = File(_avatarPath!.substring(5));
-        if (f.existsSync()) return CircleAvatar(radius: 22, backgroundImage: FileImage(f));
+        if (f.existsSync()) {
+          return CircleAvatar(radius: 22, backgroundImage: FileImage(f));
+        }
       } else if (_avatarPath!.startsWith('asset:')) {
         return CircleAvatar(radius: 22, backgroundImage: AssetImage(_avatarPath!.substring(6)));
       }
@@ -186,11 +248,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _avatarMenu(User user) {
     return PopupMenuButton<String>(
       position: PopupMenuPosition.under,
-      offset: const Offset(0, 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 8,
       onSelected: (v) async {
-        if (!mounted) return;
         switch (v) {
           case 'camera':
             await _pickAndCrop(ImageSource.camera);
@@ -208,12 +267,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.all(12),
                     child: Wrap(
                       spacing: 10,
-                      runSpacing: 10,
                       children: _avatarImages.map((path) {
                         return GestureDetector(
                           onTap: () {
                             Navigator.pop(context);
-                            _saveAvatarChoice('asset:$path');
+                            _saveAvatarChoice("asset:$path");
                           },
                           child: CircleAvatar(
                             radius: 28,
@@ -222,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       }).toList(),
                     ),
-                  ),
+                  )
                 ],
               ),
             );
@@ -232,11 +290,11 @@ class _HomeScreenState extends State<HomeScreen> {
             break;
         }
       },
-      itemBuilder: (_) => [
-        const PopupMenuItem(value: 'camera', child: Text('📸 Chụp ảnh')),
-        const PopupMenuItem(value: 'pick', child: Text('🖼️ Chọn từ thư viện')),
-        const PopupMenuItem(value: 'assets', child: Text('✨ Chọn avatar có sẵn')),
-        const PopupMenuItem(value: 'logout', child: Text('🚪 Đăng xuất')),
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'camera', child: Text('📸 Chụp ảnh')),
+        PopupMenuItem(value: 'pick', child: Text('🖼️ Chọn từ thư viện')),
+        PopupMenuItem(value: 'assets', child: Text('✨ Avatar có sẵn')),
+        PopupMenuItem(value: 'logout', child: Text('🚪 Đăng xuất')),
       ],
       child: _avatarWidget(user),
     );
@@ -246,23 +304,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Scaffold(body: Center(child: Text('Bạn chưa đăng nhập.')));
+      return const Scaffold(body: Center(child: Text("Bạn chưa đăng nhập.")));
     }
 
     final uid = user.uid;
     final now = DateTime.now();
+    final loc = AppLoc.of(context);
 
     return AnimatedBuilder(
       animation: LanguageController.I,
       builder: (_, __) {
-        final loc = AppLoc.of(context);
         return Scaffold(
           backgroundColor: const Color(0xFFF3F7F7),
           appBar: AppBar(
-            title: Text(
-              loc.titleEventList,
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-            ),
+            title: Text(loc.titleEventList,
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
             centerTitle: true,
             flexibleSpace: Container(
               decoration: const BoxDecoration(
@@ -274,14 +330,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
               ),
             ),
-            foregroundColor: Colors.white,
             backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
             actions: [
               KeyedSubtree(
                 key: _kLang,
                 child: IconButton(
-                  tooltip: loc.language,
-                  icon: const Icon(Icons.language, color: Colors.white),
+                  icon: const Icon(Icons.language),
                   onPressed: () => LanguageController.I.toggle(),
                 ),
               ),
@@ -294,54 +349,50 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+
           floatingActionButton: KeyedSubtree(
             key: _kFab,
             child: FloatingActionButton.extended(
               backgroundColor: const Color(0xFF00A693),
-              icon: const Icon(Icons.add, color: Colors.white, size: 26),
-              label: Text(
-                loc.addEvent,
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-              ),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(loc.addEvent,
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
               onPressed: () async {
                 await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ThemSuKienScreen()),
-                );
+                    context, MaterialPageRoute(builder: (_) => const ThemSuKienScreen()));
               },
             ),
           ),
+
           body: StreamBuilder<List<SuKien>>(
             stream: _svc.suKienCua(uid),
             builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
+              if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snap.hasError) return Center(child: Text("Lỗi: ${snap.error}"));
-              final data = snap.data ?? [];
 
-              // Tour Sửa/Xóa khi có dữ liệu đầu tiên
-              if (data.isNotEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((_) async {
-                  final should = await UserMetaService().shouldRunGuideEditDelete(uid);
-                  if (should && !_guideEditDeleteStarted) {
-                    await Future.delayed(const Duration(milliseconds: 300));
-                    _startGuideEditDelete();
-                  }
-                });
-              }
-
+              final data = snap.data!;
               if (data.isEmpty) {
-                return Center(
-                  child: Text(loc.noEvents, style: const TextStyle(fontSize: 16)),
-                );
+                return Center(child: Text(loc.noEvents));
               }
 
-              final sapToi = data.where((e) => e.thoiDiem.isAfter(now)).toList()
+              // Tour hướng dẫn edit/delete
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                final should = await UserMetaService().shouldRunGuideEditDelete(uid);
+                if (should && !_guideEditDeleteStarted && data.isNotEmpty) {
+                  await Future.delayed(const Duration(milliseconds: 300));
+                  _startGuideEditDelete();
+                }
+              });
+
+              final futureEvents = data.where((e) => e.thoiDiem.isAfter(now)).toList()
                 ..sort((a, b) => a.thoiDiem.compareTo(b.thoiDiem));
-              final daDenHen = data.where((e) => e.thoiDiem.isBefore(now)).toList()
+
+              final pastEvents = data.where((e) => e.thoiDiem.isBefore(now)).toList()
                 ..sort((a, b) => b.thoiDiem.compareTo(a.thoiDiem));
-              final all = [...sapToi, ...daDenHen];
+
+              final all = [...futureEvents, ...pastEvents];
 
               return ListView.builder(
                 padding: const EdgeInsets.fromLTRB(12, 16, 12, 96),
@@ -359,7 +410,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withValues(alpha: .15),
+                          color: color.withValues(alpha: .15)
+,
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -370,6 +422,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Header
                           Row(
                             children: [
                               Container(
@@ -379,14 +432,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   gradient: LinearGradient(
                                     colors: [
                                       color.withValues(alpha: .8),
-                                      color.withValues(alpha: .4),
+                                     color.withValues(alpha: .4),
                                     ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
                                   ),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.event, color: Colors.white, size: 28),
+                                child:
+                                    const Icon(Icons.event, color: Colors.white, size: 28),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -396,9 +448,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Text(
                                       e.tieuDe,
                                       style: const TextStyle(
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w800),
                                     ),
                                     const SizedBox(height: 3),
                                     Row(
@@ -409,32 +460,34 @@ class _HomeScreenState extends State<HomeScreen> {
                                         Text(
                                           time,
                                           style: const TextStyle(
-                                            fontSize: 13.5,
-                                            color: Colors.black54,
-                                          ),
+                                              color: Colors.black54, fontSize: 13.5),
                                         ),
                                       ],
                                     ),
                                   ],
                                 ),
-                              ),
+                              )
                             ],
                           ),
+
+                          // Note
                           if (e.ghiChu?.isNotEmpty == true)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
                                 '📝 ${e.ghiChu}',
                                 style: const TextStyle(
-                                  fontSize: 13.5,
-                                  color: Colors.black54,
-                                ),
+                                    fontSize: 13.5, color: Colors.black54),
                               ),
                             ),
+
                           const SizedBox(height: 10),
+
+                          // Countdown
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: .08),
                               borderRadius: BorderRadius.circular(12),
@@ -445,91 +498,40 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ? Text(
                                       loc.arrived,
                                       style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.teal,
-                                        fontSize: 16,
-                                      ),
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.teal,
+                                          fontSize: 16),
                                     )
                                   : CountdownText(
                                       target: e.thoiDiem,
                                       style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: color.darken(),
-                                      ),
+                                          fontWeight: FontWeight.bold,
+                                          color: color.withValues(alpha: .8),
+                                          fontSize: 16),
                                       doneText: loc.arrived,
                                     ),
                             ),
                           ),
+
                           const SizedBox(height: 10),
+
+                          // Edit / Delete buttons
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              KeyedSubtree(
-                                key: _kEdit,
-                                child: TextButton.icon(
-                                  onPressed: () async {
-                                    await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => SuaSuKienScreen(suKien: e),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.edit, color: Colors.teal),
-                                  label: Text(
-                                    loc.edit,
-                                    style: const TextStyle(
-                                      color: Colors.teal,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              KeyedSubtree(
-                                key: _kDelete,
-                                child: TextButton.icon(
-                                  onPressed: () async {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (_) => AlertDialog(
-                                        title: Text(loc.deleteEvent),
-                                        content: Text(loc.deleteConfirm(e.tieuDe)),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context, false),
-                                            child: Text(loc.cancel),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: () => Navigator.pop(context, true),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.redAccent,
-                                            ),
-                                            child: Text(loc.delete),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirm == true) {
-                                      // 🔥 chỉ truyền id vì xoa(String id)
-                                      await _svc.xoa(e.id);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(loc.deletedToast)),
-                                        );
-                                      }
-                                    }
-                                  },
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  label: Text(
-                                    loc.delete,
-                                    style: const TextStyle(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              (i == 0)
+                                  ? KeyedSubtree(
+                                      key: _kEdit,
+                                      child: _buildEditButton(e, loc),
+                                    )
+                                  : _buildEditButton(e, loc),
+
+                              (i == 0)
+                                  ? KeyedSubtree(
+                                      key: _kDelete,
+                                      child: _buildDeleteButton(e, loc),
+                                    )
+                                  : _buildDeleteButton(e, loc),
                             ],
                           ),
                         ],
@@ -546,11 +548,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-extension _ColorX on Color {
-  Color darken([double amount = .2]) {
-    final hsl = HSLColor.fromColor(this);
-    return hsl
-        .withLightness((hsl.lightness - amount).clamp(0.0, 1.0))
-        .toColor();
-  }
-}
+// Color extension
+// extension _ColorX on Color {
+//   Color darken([double amount = .2]) {
+//     final hsl = HSLColor.fromColor(this);
+//     return hsl.withLightness((hsl.lightness - amount).clamp(0, 1)).toColor();
+//   }
+// }
